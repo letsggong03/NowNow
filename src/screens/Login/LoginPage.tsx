@@ -8,8 +8,12 @@ import {
   Alert,
 } from "react-native";
 import { supabase } from "../../services/supabase";
+import { useAppTheme } from "../../theme/ThemeProvider";
 
 export default function LoginScreen({ navigation }: any) {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -30,13 +34,11 @@ export default function LoginScreen({ navigation }: any) {
       console.log("로그인 성공:", data);
 
       const { data: sessionData } = await supabase.auth.getSession();
-      console.log("🔥 세션:", sessionData.session);
+      console.log("세션:", sessionData.session);
 
       Alert.alert("로그인 성공");
 
-      // 👉 여기서 화면 이동 (원하면)
-      // navigation.replace("Home");
-
+      // 👉 RootNavigator가 session 보고 자동 전환함
     } catch (error: any) {
       Alert.alert("로그인 실패", error.message);
     }
@@ -49,6 +51,7 @@ export default function LoginScreen({ navigation }: any) {
       <TextInput
         style={styles.input}
         placeholder="이메일"
+        placeholderTextColor={theme.placeholder}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -57,6 +60,7 @@ export default function LoginScreen({ navigation }: any) {
       <TextInput
         style={styles.input}
         placeholder="비밀번호"
+        placeholderTextColor={theme.placeholder}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
@@ -66,6 +70,7 @@ export default function LoginScreen({ navigation }: any) {
         <Text style={styles.buttonText}>로그인</Text>
       </TouchableOpacity>
 
+      {/* 수정 핵심 */}
       <TouchableOpacity onPress={() => navigation.navigate("Signup")}>
         <Text style={styles.signupText}>회원가입하기</Text>
       </TouchableOpacity>
@@ -73,38 +78,49 @@ export default function LoginScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: "bold",
-    marginBottom: 30,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-  },
-  loginButton: {
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-    backgroundColor: "#4CAF50",
-  },
-  buttonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  signupText: {
-    marginTop: 20,
-    textAlign: "center",
-  },
-});
+const createStyles = (theme: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      padding: 24,
+      backgroundColor: theme.background,
+    },
+
+    title: {
+      fontSize: 30,
+      fontWeight: "bold",
+      marginBottom: 30,
+      textAlign: "center",
+      color: theme.text,
+    },
+
+    input: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 12,
+      color: theme.text,
+      backgroundColor: theme.inputBackground,
+    },
+
+    loginButton: {
+      padding: 15,
+      borderRadius: 10,
+      alignItems: "center",
+      marginTop: 10,
+      backgroundColor: theme.primary,
+    },
+
+    buttonText: {
+      color: theme.buttonText,
+      fontWeight: "bold",
+    },
+
+    signupText: {
+      marginTop: 20,
+      textAlign: "center",
+      color: theme.text,
+    },
+  });

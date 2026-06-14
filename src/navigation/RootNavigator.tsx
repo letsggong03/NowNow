@@ -1,17 +1,27 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import AuthNavigator from "./AuthNavigator";
 import TabNavigator from "./TabNavigator";
+import { supabase } from "../services/supabase";
 
 export default function RootNavigator() {
-  const isLoggedIn = false; // 나중에 토큰 검사 결과
+  const [session, setSession] = useState<any>(null);
 
-  return (
-    <>
-      {isLoggedIn ? (
-        <TabNavigator />
-      ) : (
-        <AuthNavigator />
-      )}
-    </>
-  );
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data?.session ?? null);
+    };
+
+    init();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  return session ? <TabNavigator /> : <AuthNavigator />;
 }

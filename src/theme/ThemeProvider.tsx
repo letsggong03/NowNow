@@ -21,6 +21,7 @@ export const appThemes = {
     iconSurface: '#EEF7EC',
     icon: '#5F705C',
     pressed: '#F4F8F1',
+    placeholder : "#999"
   },
   dark: {
     mode: 'dark' as ThemeMode,
@@ -40,6 +41,7 @@ export const appThemes = {
     iconSurface: '#30332D',
     icon: '#D8DACF',
     pressed: '#2B2E28',
+    placeholder : "#999"
   },
 };
 

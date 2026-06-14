@@ -21,6 +21,7 @@ export default function AuthNavigator() {
         name="Signup"
         component={SignupPage}
       />
+      
     </Stack.Navigator>
   );
 }
