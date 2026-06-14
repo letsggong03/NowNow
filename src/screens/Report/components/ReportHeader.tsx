@@ -1,53 +1,88 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
-import {Sparkles} from 'lucide-react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 
-export default function ReportHeader() {
+interface ReportHeaderProps {
+  tab: 'daily' | 'weekly';
+  onChangeTab: (tab: 'daily' | 'weekly') => void;
+}
+
+export default function ReportHeader({
+  tab,
+  onChangeTab,
+}: ReportHeaderProps) {
+
+  
   const {theme} = useAppTheme();
-  const today = new Intl.DateTimeFormat('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date());
 
   return (
-    <View style={[styles.header, {backgroundColor: theme.nav}]}>
-      <View style={styles.iconWrap}>
-        <Sparkles color={theme.text} size={24} />
-      </View>
-      <View>
-        <Text style={[styles.title, {color: theme.text}]}>건강 리포트</Text>
-        <Text style={[styles.subtitle, {color: theme.textMuted}]}>
-          {today} 상태를 한눈에
+    <View style={styles.container}>
+      <Pressable
+        style={styles.tab}
+        onPress={() => onChangeTab('daily')}>
+        <Text
+          style={[
+            styles.tabText,
+            {
+              color:
+                tab === 'daily'
+                  ? theme.text
+                  : theme.textMuted,
+            },
+          ]}>
+          실시간 리포트
         </Text>
-      </View>
+
+        {tab === 'daily' && (
+          <View style={styles.indicator} />
+        )}
+      </Pressable>
+
+      <Pressable
+        style={styles.tab}
+        onPress={() => onChangeTab('weekly')}>
+        <Text
+          style={[
+            styles.tabText,
+            {
+              color:
+                tab === 'weekly'
+                  ? theme.text
+                  : theme.textMuted,
+            },
+          ]}>
+          주간 리포트
+        </Text>
+
+        {tab === 'weekly' && (
+          <View style={styles.indicator} />
+        )}
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    borderRadius: 20,
+  container: {
     flexDirection: 'row',
-    gap: 14,
-    padding: 20,
   },
-  iconWrap: {
+
+  tab: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    borderRadius: 15,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
+    flex: 1,
+    paddingBottom: 10,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
+
+  tabText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
-  subtitle: {
-    fontSize: 12,
-    marginTop: 4,
+
+  indicator: {
+    width: '70%',
+    height: 3,
+    marginTop: 8,
+    borderRadius: 999,
+    backgroundColor: '#E8A5B8',
   },
 });

@@ -7,13 +7,18 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import {vitalData} from '../constants/reportData';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import type {MetricType} from '../types';
 import ReportCard from './ReportCard';
 
 interface TrendChartProps {
   selectedMetric: MetricType;
+  healthData: any;
+}
+
+interface ChartItem {
+  time: string;
+  value: number;
 }
 
 interface AnimatedBarProps {
@@ -29,8 +34,8 @@ function AnimatedBar({colorStyle, height, index, metricKey}: AnimatedBarProps) {
   useEffect(() => {
     progress.setValue(0);
     Animated.timing(progress, {
-      delay: index * 45,
-      duration: 360,
+      delay: index * 35,
+      duration: 320,
       toValue: 1,
       useNativeDriver: false,
     }).start();
@@ -42,49 +47,89 @@ function AnimatedBar({colorStyle, height, index, metricKey}: AnimatedBarProps) {
   });
 
   return (
-    <Animated.View
-      style={[styles.bar, colorStyle, {height: animatedHeight}]}
-    />
+    <Animated.View style={[styles.bar, colorStyle, {height: animatedHeight}]} />
   );
 }
 
-export default function TrendChart({selectedMetric}: TrendChartProps) {
+export default function TrendChart({selectedMetric, healthData}: TrendChartProps) {
   const {theme} = useAppTheme();
+
   const isBloodPressure = selectedMetric === 'bloodPressure';
   const maxValue = isBloodPressure ? 150 : 120;
-  const title = isBloodPressure ? '혈압 변화' : '심박수 변화';
+  const title = isBloodPressure ? '최근 24시간 혈압 변화' : '최근 24시간 심박수 변화';
   const unit = isBloodPressure ? 'mmHg' : 'bpm';
 
+  const rawData = isBloodPressure
+    ? healthData?.bloodPressureSamples ?? []
+    : healthData?.heartRateSamples ?? [];
+
+    const chartData: ChartItem[] = Array.from({length: 24}, (_, hour) => ({
+    time: hour.toString().padStart(2, '0'),
+    value: 0,
+    }));
+
+    rawData.forEach((item: any) => {
+      if (!item.time) return;
+
+      const hour = new Date(item.time).getHours();
+
+      const value = isBloodPressure
+        ? item.systolic
+        : item.bpm;
+
+      chartData[hour].value = value;
+    });
+          
   return (
     <ReportCard>
       <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
+    
       <View style={styles.chart}>
-        {vitalData.map((item, index) => {
-          const value = isBloodPressure ? item.bloodPressure : item.heartRate;
-          const height = Math.max(18, (value / maxValue) * 140);
+        {chartData.map((item, index) => {
+          const height =
+            item.value > 0
+              ? Math.max(18, (item.value / maxValue) * 140)
+              : 2;
 
-          return (
-            <View key={item.time} style={styles.barColumn}>
-              <Text style={[styles.valueLabel, {color: theme.textMuted}]}>
-                {value}
-              </Text>
-              <AnimatedBar
-                colorStyle={
-                  isBloodPressure
-                    ? {backgroundColor: theme.nav}
-                    : {backgroundColor: theme.accent}
-                }
-                height={height}
-                index={index}
-                metricKey={selectedMetric}
-              />
-              <Text style={[styles.timeLabel, {color: theme.textMuted}]}>
-                {item.time.slice(0, 2)}
-              </Text>
-            </View>
+          const hour = item.time;
+
+          const shouldShowHour =
+            Number(hour) % 3 === 0 || hour === '23';
+
+         return (
+          <View key={`${item.time}-${index}`} style={styles.barColumn}>
+            <Text style={[styles.valueLabel, {color: theme.textMuted}]}>
+              {item.value > 0 ? Math.round(item.value) : ''}
+            </Text>
+
+            <AnimatedBar
+              colorStyle={
+                isBloodPressure
+                  ? {backgroundColor: theme.nav}
+                  : {backgroundColor: theme.accent}
+              }
+              height={height}
+              index={index}
+              metricKey={selectedMetric}
+            />
+
+            <Text style={[styles.timeLabel, {color: theme.textMuted}]}>
+               {shouldShowHour ? (hour === '23' ? '24' : hour) : ''}
+            </Text>
+          </View>
           );
         })}
       </View>
+
+      <View
+        style={[
+          styles.xAxis,
+          {backgroundColor: theme.border},
+        ]}
+      />
+      
+      
+
       <Text style={[styles.unitText, {color: theme.textMuted}]}>
         단위: {unit}
       </Text>
@@ -101,7 +146,7 @@ const styles = StyleSheet.create({
   chart: {
     alignItems: 'flex-end',
     flexDirection: 'row',
-    gap: 7,
+    gap: 3,
     height: 170,
   },
   barColumn: {
@@ -114,16 +159,32 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   timeLabel: {
-    fontSize: 10,
-    marginTop: 7,
+    fontSize: 9,
+    marginTop: 12,
+    width :22,
+    textAlign: 'center',
   },
   valueLabel: {
-    fontSize: 9,
-    marginBottom: 4,
+    fontSize: 8,
+    marginBottom: 8,
   },
   unitText: {
     fontSize: 11,
     marginTop: 12,
     textAlign: 'right',
   },
+  emptyBox: {
+    alignItems: 'center',
+    height: 170,
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  xAxis: {
+  height: 1,
+  width: '100%',
+  marginTop: 4,
+},
 });

@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 class HealthConnectModule(
@@ -37,36 +38,46 @@ class HealthConnectModule(
                 val client = HealthConnectClient.getOrCreate(reactContext)
 
                 val endTime = Instant.now()
-                val startTime7Days = endTime.minus(7, ChronoUnit.DAYS)
+
+                val todayStart = endTime
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+
                 val startTime24Hours = endTime.minus(24, ChronoUnit.HOURS)
 
                 val result = Arguments.createMap()
 
-                // 1. 걸음 수 총합
+                // 1. 오늘 걸음 수 총합
                 val stepsResponse = client.aggregate(
                     AggregateRequest(
                         metrics = setOf(StepsRecord.COUNT_TOTAL),
-                        timeRangeFilter = TimeRangeFilter.between(startTime7Days, endTime)
+                        timeRangeFilter = TimeRangeFilter.between(todayStart, endTime)
                     )
                 )
 
                 val totalSteps = stepsResponse[StepsRecord.COUNT_TOTAL] ?: 0L
                 result.putDouble("stepsTotal", totalSteps.toDouble())
 
-                // 2. 심박수 raw
+                // 2. 오늘 심박수 목록 + 가장 최근 심박수
                 val heartRateResponse = client.readRecords(
                     ReadRecordsRequest(
                         recordType = HeartRateRecord::class,
-                        timeRangeFilter = TimeRangeFilter.between(startTime24Hours, endTime)
+                        timeRangeFilter = TimeRangeFilter.between(todayStart, endTime)
                     )
                 )
 
                 val heartRateSamples = Arguments.createArray()
                 var latestHeartRate = 0L
+                var latestHeartRateTime: Instant? = null
 
                 for (record in heartRateResponse.records) {
                     for (sample in record.samples) {
-                        latestHeartRate = sample.beatsPerMinute
+                        if (latestHeartRateTime == null || sample.time.isAfter(latestHeartRateTime)) {
+                            latestHeartRateTime = sample.time
+                            latestHeartRate = sample.beatsPerMinute
+                        }
 
                         val item = Arguments.createMap()
                         item.putString("time", sample.time.toString())
@@ -76,21 +87,26 @@ class HealthConnectModule(
                 }
 
                 result.putDouble("latestHeartRate", latestHeartRate.toDouble())
+                result.putString("latestHeartRateTime", latestHeartRateTime?.toString())
                 result.putArray("heartRateSamples", heartRateSamples)
 
-                // 3. 산소포화도 raw
+                // 3. 오늘 산소포화도 목록 + 가장 최근 산소포화도
                 val oxygenResponse = client.readRecords(
                     ReadRecordsRequest(
                         recordType = OxygenSaturationRecord::class,
-                        timeRangeFilter = TimeRangeFilter.between(startTime7Days, endTime)
+                        timeRangeFilter = TimeRangeFilter.between(todayStart, endTime)
                     )
                 )
 
                 val oxygenSamples = Arguments.createArray()
                 var latestOxygen = 0.0
+                var latestOxygenTime: Instant? = null
 
                 for (record in oxygenResponse.records) {
-                    latestOxygen = record.percentage.value
+                    if (latestOxygenTime == null || record.time.isAfter(latestOxygenTime)) {
+                        latestOxygenTime = record.time
+                        latestOxygen = record.percentage.value
+                    }
 
                     val item = Arguments.createMap()
                     item.putString("time", record.time.toString())
@@ -99,23 +115,28 @@ class HealthConnectModule(
                 }
 
                 result.putDouble("latestOxygen", latestOxygen)
+                result.putString("latestOxygenTime", latestOxygenTime?.toString())
                 result.putArray("oxygenSamples", oxygenSamples)
 
-                // 4. 혈압 raw
+                // 4. 오늘 혈압 목록 + 가장 최근 혈압
                 val bloodPressureResponse = client.readRecords(
                     ReadRecordsRequest(
                         recordType = BloodPressureRecord::class,
-                        timeRangeFilter = TimeRangeFilter.between(startTime7Days, endTime)
+                        timeRangeFilter = TimeRangeFilter.between(todayStart, endTime)
                     )
                 )
 
                 val bloodPressureSamples = Arguments.createArray()
                 var latestSystolic = 0.0
                 var latestDiastolic = 0.0
+                var latestBloodPressureTime: Instant? = null
 
                 for (record in bloodPressureResponse.records) {
-                    latestSystolic = record.systolic.inMillimetersOfMercury
-                    latestDiastolic = record.diastolic.inMillimetersOfMercury
+                    if (latestBloodPressureTime == null || record.time.isAfter(latestBloodPressureTime)) {
+                        latestBloodPressureTime = record.time
+                        latestSystolic = record.systolic.inMillimetersOfMercury
+                        latestDiastolic = record.diastolic.inMillimetersOfMercury
+                    }
 
                     val item = Arguments.createMap()
                     item.putString("time", record.time.toString())
@@ -126,25 +147,31 @@ class HealthConnectModule(
 
                 result.putDouble("latestSystolic", latestSystolic)
                 result.putDouble("latestDiastolic", latestDiastolic)
+                result.putString("latestBloodPressureTime", latestBloodPressureTime?.toString())
                 result.putArray("bloodPressureSamples", bloodPressureSamples)
 
-                // 5. 수면 raw
+                // 5. 최근 24시간 수면 목록 + 가장 최근 수면 세션
                 val sleepResponse = client.readRecords(
                     ReadRecordsRequest(
                         recordType = SleepSessionRecord::class,
-                        timeRangeFilter = TimeRangeFilter.between(startTime7Days, endTime)
+                        timeRangeFilter = TimeRangeFilter.between(startTime24Hours, endTime)
                     )
                 )
 
                 val sleepSessions = Arguments.createArray()
-                var latestSleepHours = 0.0
+                var latestSleepMinutes = 0L
+                var latestSleepStartTime: Instant? = null
+                var latestSleepEndTime: Instant? = null
 
                 for (record in sleepResponse.records) {
-                    val hours = Duration.between(record.startTime, record.endTime)
-                        .toMinutes()
-                        .toDouble() / 60.0
+                    val minutes = Duration.between(record.startTime, record.endTime).toMinutes()
+                    val hours = minutes.toDouble() / 60.0
 
-                    latestSleepHours = hours
+                    if (latestSleepEndTime == null || record.endTime.isAfter(latestSleepEndTime)) {
+                        latestSleepEndTime = record.endTime
+                        latestSleepStartTime = record.startTime
+                        latestSleepMinutes = minutes
+                    }
 
                     val item = Arguments.createMap()
                     item.putString("startTime", record.startTime.toString())
@@ -153,7 +180,9 @@ class HealthConnectModule(
                     sleepSessions.pushMap(item)
                 }
 
-                result.putDouble("latestSleepHours", latestSleepHours)
+                result.putDouble("latestSleepMinutes", latestSleepMinutes.toDouble())
+                result.putString("latestSleepStartTime", latestSleepStartTime?.toString())
+                result.putString("latestSleepEndTime", latestSleepEndTime?.toString())
                 result.putArray("sleepSessions", sleepSessions)
 
                 Log.d("HEALTH_DATA", result.toString())
