@@ -115,6 +115,8 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    implementation "androidx.health.connect:connect-client:1.1.0"  // 헬스커넥트 의존성 추가
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

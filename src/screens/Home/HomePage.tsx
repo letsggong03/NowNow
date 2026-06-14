@@ -10,6 +10,7 @@ import PreferencesCard from './components/PreferencesCard';
 import {useCharacterHome} from './hooks/useCharacterHome';
 import {useAppTheme} from '../../theme/ThemeProvider';
 
+
 export default function HomePage() {
   const {theme} = useAppTheme();
   const {
@@ -23,6 +24,7 @@ export default function HomePage() {
     handleOptionSelect,
     handleCancelOptions,
   } = useCharacterHome();
+
 
   return (
     <SafeAreaView
