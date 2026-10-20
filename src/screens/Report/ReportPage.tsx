@@ -11,6 +11,7 @@ import TrendChart from './components/TrendChart';
 import {useReport} from './hooks/useReport';
 import {useAppTheme} from '../../theme/ThemeProvider';
 import {supabase} from '../../services/supabase';
+import {createMockHealthData} from '../../services/health/mockHealthData';
 
 import WeeklyReportItem from './components/WeeklyReportItem';
 
@@ -56,6 +57,12 @@ export default function ReportPage() {
 
   useEffect(() => {
     const loadHealthData = async () => {
+      // 에뮬레이터처럼 Health Connect를 쓸 수 없는 개발 환경에서는 목업 데이터로 UI를 확인한다.
+      if (!HealthConnectModule) {
+        if (__DEV__) setHealthData(createMockHealthData());
+        return;
+      }
+
       try {
         const data = await HealthConnectModule.getHealthData();
         console.log('Health data:', data);
@@ -64,6 +71,7 @@ export default function ReportPage() {
         await saveRawHealthData(data);
       } catch (e) {
         console.log('HealthConnect 에러:', e);
+        if (__DEV__) setHealthData(createMockHealthData());
       }
     };
 
