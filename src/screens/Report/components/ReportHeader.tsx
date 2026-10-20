@@ -1,63 +1,46 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useAppTheme} from '../../../theme/ThemeProvider';
+import {reportTabs} from '../constants/reportData';
+import type {ReportTab} from '../types';
 
 interface ReportHeaderProps {
-  tab: 'daily' | 'weekly';
-  onChangeTab: (tab: 'daily' | 'weekly') => void;
+  tab: ReportTab;
+  onChangeTab: (tab: ReportTab) => void;
 }
 
 export default function ReportHeader({
   tab,
   onChangeTab,
 }: ReportHeaderProps) {
-
-  
   const {theme} = useAppTheme();
 
   return (
     <View style={styles.container}>
-      <Pressable
-        style={styles.tab}
-        onPress={() => onChangeTab('daily')}>
-        <Text
-          style={[
-            styles.tabText,
-            {
-              color:
-                tab === 'daily'
-                  ? theme.text
-                  : theme.textMuted,
-            },
-          ]}>
-          실시간 리포트
-        </Text>
+      {reportTabs.map(item => {
+        const active = tab === item.key;
 
-        {tab === 'daily' && (
-          <View style={styles.indicator} />
-        )}
-      </Pressable>
+        return (
+          <Pressable
+            key={item.key}
+            style={styles.tab}
+            onPress={() => onChangeTab(item.key)}>
+            <Text
+              style={[
+                styles.tabText,
+                {color: active ? theme.text : theme.textMuted},
+              ]}>
+              {item.label}
+            </Text>
 
-      <Pressable
-        style={styles.tab}
-        onPress={() => onChangeTab('weekly')}>
-        <Text
-          style={[
-            styles.tabText,
-            {
-              color:
-                tab === 'weekly'
-                  ? theme.text
-                  : theme.textMuted,
-            },
-          ]}>
-          주간 리포트
-        </Text>
-
-        {tab === 'weekly' && (
-          <View style={styles.indicator} />
-        )}
-      </Pressable>
+            {active && (
+              <View
+                style={[styles.indicator, {backgroundColor: theme.accent}]}
+              />
+            )}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -83,6 +66,5 @@ const styles = StyleSheet.create({
     height: 3,
     marginTop: 8,
     borderRadius: 999,
-    backgroundColor: '#E8A5B8',
   },
 });

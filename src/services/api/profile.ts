@@ -1,5 +1,6 @@
 import { supabase } from "../supabase";
 
+// 회원가입(SignupPage)에서 저장하는 테이블/컬럼과 동일하게 맞춘다.
 export async function getProfile() {
   const {
     data: { user },
@@ -8,9 +9,9 @@ export async function getProfile() {
   if (!user) return null;
 
   const { data, error } = await supabase
-    .from("user_information")
+    .from("user_informations")
     .select("nickname")
-    .eq("user_id", user.id)
+    .eq("id", user.id)
     .single();
 
   if (error) {
@@ -18,5 +19,5 @@ export async function getProfile() {
     return null;
   }
 
-  return data.nickname;
+  return data.nickname as string | null;
 }

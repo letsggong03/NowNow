@@ -8,6 +8,8 @@ import InteractionButtons from './components/InteractionButtons';
 import MoodSelector from './components/MoodSelector';
 import PreferencesCard from './components/PreferencesCard';
 import {useCharacterHome} from './hooks/useCharacterHome';
+import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
+import {shadows} from '../../theme/shadows';
 import {useAppTheme} from '../../theme/ThemeProvider';
 
 
@@ -72,20 +74,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 110,
-    paddingHorizontal: 18,
+    paddingBottom: SCREEN_BOTTOM_INSET,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 16,
     rowGap: 14,
   },
   moodSection: {
+    ...shadows.card,
     borderRadius: 22,
     padding: 12,
     rowGap: 11,
-    shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 5},
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
   },
   title: {
     fontSize: 17,

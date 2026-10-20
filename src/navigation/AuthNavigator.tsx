@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import EmailVerifyScreen from '../screens/Login/EmailVerify';
 import LoginPage from '../screens/Login/LoginPage';
 import SignupPage from '../screens/Login/SignupPage';
 
@@ -21,7 +22,11 @@ export default function AuthNavigator() {
         name="Signup"
         component={SignupPage}
       />
-      
+
+      <Stack.Screen
+        name="EmailVerify"
+        component={EmailVerifyScreen}
+      />
     </Stack.Navigator>
   );
 }

@@ -1,9 +1,16 @@
- import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
+import { useAppTheme, type AppTheme } from "../../theme/ThemeProvider";
+import { createAuthStyles } from "./authStyles";
+
 export default function EmailVerifyScreen({ navigation }: any) {
+  const { theme } = useAppTheme();
+  const authStyles = useMemo(() => createAuthStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
-    <View style={styles.container}>
+    <View style={[authStyles.container, styles.container]}>
       <Text style={styles.title}>이메일 인증이 필요합니다</Text>
 
       <Text style={styles.desc}>
@@ -12,39 +19,33 @@ export default function EmailVerifyScreen({ navigation }: any) {
       </Text>
 
       <TouchableOpacity
-        style={styles.button}
+        style={[authStyles.primaryButton, styles.button]}
         onPress={() => navigation.replace("Login")}
       >
-        <Text style={styles.buttonText}>인증 완료했어요</Text>
+        <Text style={authStyles.buttonText}>인증 완료했어요</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
-  },
-  desc: {
-    textAlign: "center",
-    marginBottom: 30,
-    color: "#666",
-  },
-  button: {
-    backgroundColor: "#4CAF50",
-    padding: 14,
-    borderRadius: 10,
-  },
-  buttonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-});
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      alignItems: "center",
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: "bold",
+      marginBottom: 20,
+      color: theme.text,
+    },
+    desc: {
+      textAlign: "center",
+      marginBottom: 30,
+      color: theme.textMuted,
+    },
+    button: {
+      marginTop: 0,
+      paddingHorizontal: 24,
+    },
+  });

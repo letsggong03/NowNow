@@ -1,7 +1,10 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 
+import {CHARACTER_NAME} from '../../../constants/app';
+import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
+import {withJosa} from '../../../utils/josa';
 import {preferenceLabels} from '../constants/preferenceOptions';
 import type {PreferenceKey, UserPreferences} from '../types';
 
@@ -9,16 +12,8 @@ interface PreferencesCardProps {
   preferences: UserPreferences;
 }
 
-const formatInteractionText = (key: PreferenceKey, value: string) => {
-  const messages: Record<PreferenceKey, string> = {
-    feed: `${preferenceLabels[key]}로 ${value}`,
-    play: `${preferenceLabels[key]}로 ${value}`,
-    music: `${preferenceLabels[key]}으로 ${value}`,
-    hobby: `${preferenceLabels[key]}으로 ${value}`,
-  };
-
-  return messages[key];
-};
+const formatInteractionText = (key: PreferenceKey, value: string) =>
+  `${withJosa(preferenceLabels[key], '으로/로')} ${value}`;
 
 export default function PreferencesCard({preferences}: PreferencesCardProps) {
   const {theme} = useAppTheme();
@@ -31,7 +26,7 @@ export default function PreferencesCard({preferences}: PreferencesCardProps) {
   return (
     <View style={[styles.card, {backgroundColor: theme.surface}]}>
       <Text style={[styles.title, {color: theme.text}]}>
-        뿡뿡이와 함께한 것들
+        {withJosa(CHARACTER_NAME, '과/와')} 함께한 것들
       </Text>
       {entries.map(([key, value]) => (
         <View key={key} style={styles.row}>
@@ -47,13 +42,9 @@ export default function PreferencesCard({preferences}: PreferencesCardProps) {
 
 const styles = StyleSheet.create({
   card: {
+    ...shadows.card,
     borderRadius: 20,
     padding: 18,
-    shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 5},
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
   },
   title: {
     fontSize: 16,
@@ -73,8 +64,5 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 14,
-  },
-  strong: {
-    fontWeight: '700',
   },
 });

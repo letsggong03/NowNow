@@ -8,6 +8,9 @@ import type {
   UserPreferences,
 } from '../types';
 
+const MOOD_CHANGE_DELAY = 500;
+const INTERACTION_DURATION = 1000;
+
 export const useCharacterHome = () => {
   const [userMood, setUserMood] = useState<MoodType>('neutral');
   const [isInteracting, setIsInteracting] = useState(false);
@@ -33,12 +36,12 @@ export const useCharacterHome = () => {
     setCurrentOptions([]);
 
     if (userMood !== 'happy') {
-      setTimeout(() => setUserMood('happy'), 500);
+      setTimeout(() => setUserMood('happy'), MOOD_CHANGE_DELAY);
     }
 
     setTimeout(() => {
       setIsInteracting(false);
-    }, 1000);
+    }, INTERACTION_DURATION);
   };
 
   const handleCancelOptions = () => {

@@ -21,7 +21,13 @@ export const appThemes = {
     iconSurface: '#EEF7EC',
     icon: '#5F705C',
     pressed: '#F4F8F1',
-    placeholder : "#999"
+    placeholder: '#9AA397',
+    warning: '#C48239',
+    characterFeature: '#151515',
+    chart: ['#E8A5B8', '#E9B872', '#C9DEBF', '#8BA6A9', '#B8A7D9'],
+    stressWorst: '#E5675F',
+    stressBad: '#E3A93B',
+    stressNormal: '#6FB07F',
   },
   dark: {
     mode: 'dark' as ThemeMode,
@@ -41,11 +47,17 @@ export const appThemes = {
     iconSurface: '#30332D',
     icon: '#D8DACF',
     pressed: '#2B2E28',
-    placeholder : "#999"
+    placeholder: '#7F857A',
+    warning: '#D9A066',
+    characterFeature: '#151515',
+    chart: ['#82616A', '#E9B872', '#C9DEBF', '#8BA6A9', '#B8A7D9'],
+    stressWorst: '#F07B73',
+    stressBad: '#F0C25E',
+    stressNormal: '#86C795',
   },
 };
 
-type AppTheme = typeof appThemes.light;
+export type AppTheme = typeof appThemes.light;
 
 interface ThemeContextValue {
   theme: AppTheme;

@@ -2,12 +2,18 @@ import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
+import {useAppTheme} from '../../theme/ThemeProvider';
+
 export default function CommunityPage() {
+  const {theme} = useAppTheme();
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, {backgroundColor: theme.background}]}>
       <View style={styles.container}>
-        <Text style={styles.title}>커뮤니티</Text>
-        <Text style={styles.description}>마음을 나눌 공간을 준비 중입니다.</Text>
+        <Text style={[styles.title, {color: theme.text}]}>커뮤니티</Text>
+        <Text style={[styles.description, {color: theme.textMuted}]}>
+          마음을 나눌 공간을 준비 중입니다.
+        </Text>
       </View>
     </SafeAreaView>
   );
@@ -15,7 +21,6 @@ export default function CommunityPage() {
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#F8F7F2',
     flex: 1,
   },
   container: {
@@ -25,14 +30,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   title: {
-    color: '#3F463D',
     fontSize: 24,
     fontWeight: '700',
   },
   description: {
-    color: '#737A70',
     fontSize: 14,
     marginTop: 10,
   },
 });
-

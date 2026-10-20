@@ -3,14 +3,14 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {TrendingUp} from 'lucide-react-native';
 
 import {useAppTheme} from '../../../theme/ThemeProvider';
-import {causeColors} from '../constants/reportData';
-import type {StressCause} from '../types';
+import {stressPeriodOptions} from '../constants/reportData';
+import type {StressCause, StressPeriod} from '../types';
 import ReportCard from './ReportCard';
 
 interface StressCauseCardProps {
   causes: StressCause[];
-  period: 'week' | 'month';
-  onPeriodChange: (period: 'week' | 'month') => void;
+  period: StressPeriod;
+  onPeriodChange: (period: StressPeriod) => void;
 }
 
 export default function StressCauseCard({
@@ -21,7 +21,7 @@ export default function StressCauseCard({
   const {theme} = useAppTheme();
   const totalCount = causes.reduce((sum, item) => sum + item.count, 0);
   const getCauseColor = (index: number) =>
-    index === 0 ? theme.accent : causeColors[index % causeColors.length];
+    theme.chart[index % theme.chart.length];
 
   return (
     <ReportCard>
@@ -35,23 +35,20 @@ export default function StressCauseCard({
           </Text>
         </View>
         <View style={[styles.toggle, {backgroundColor: theme.surfaceMuted}]}>
-          {(['week', 'month'] as const).map(item => (
+          {stressPeriodOptions.map(item => (
             <Pressable
-              key={item}
-              onPress={() => onPeriodChange(item)}
+              key={item.key}
+              onPress={() => onPeriodChange(item.key)}
               style={[
                 styles.toggleButton,
-                period === item && styles.activeToggleButton,
-                period === item && {backgroundColor: theme.nav},
+                period === item.key && {backgroundColor: theme.nav},
               ]}>
               <Text
                 style={[
                   styles.toggleText,
-                  {color: theme.textMuted},
-                  period === item && styles.activeToggleText,
-                  period === item && {color: theme.text},
+                  {color: period === item.key ? theme.text : theme.textMuted},
                 ]}>
-                {item === 'week' ? '주간' : '월간'}
+                {item.label}
               </Text>
             </Pressable>
           ))}
@@ -133,13 +130,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 9,
   },
-  activeToggleButton: {
-  },
   toggleText: {
     fontSize: 13,
     fontWeight: '700',
-  },
-  activeToggleText: {
   },
   count: {
     fontSize: 30,

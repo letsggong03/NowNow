@@ -2,11 +2,13 @@ import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {User} from 'lucide-react-native';
 
+import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
-import {profile} from '../constants/profileData';
+import {useProfile} from '../hooks/useProfile';
 
 export default function ProfileHeader() {
   const {theme} = useAppTheme();
+  const profile = useProfile();
 
   return (
     <View style={[styles.card, {backgroundColor: theme.surface}]}>
@@ -25,16 +27,12 @@ export default function ProfileHeader() {
 
 const styles = StyleSheet.create({
   card: {
+    ...shadows.card,
     alignItems: 'center',
     borderRadius: 20,
     flexDirection: 'row',
     gap: 16,
     padding: 20,
-    shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 5},
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
   },
   avatar: {
     alignItems: 'center',

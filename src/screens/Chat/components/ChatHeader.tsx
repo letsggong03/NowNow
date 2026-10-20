@@ -4,6 +4,7 @@ import {ChevronLeft} from 'lucide-react-native';
 
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import ChatAvatar from './ChatAvatar';
+import {CHARACTER_NAME} from '../../../constants/app';
 
 interface ChatHeaderProps {
   title: string;
@@ -25,7 +26,7 @@ export default function ChatHeader({title, onBack}: ChatHeaderProps) {
       </Pressable>
       <View style={styles.headerTitleArea}>
         <ChatAvatar />
-        <Text style={[styles.headerTitle, {color: theme.text}]}>뿡뿡이</Text>
+        <Text style={[styles.headerTitle, {color: theme.text}]}>{CHARACTER_NAME}</Text>
         <View style={[styles.divider, {backgroundColor: theme.border}]} />
         <Text style={[styles.headerSubtitle, {color: theme.textMuted}]}>
           {title}
@@ -49,8 +50,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 2,
     width: 36,
-  },
-  pressedBackButton: {
   },
   headerTitleArea: {
     alignItems: 'center',

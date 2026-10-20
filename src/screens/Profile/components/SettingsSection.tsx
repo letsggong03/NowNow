@@ -1,6 +1,7 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ChevronRight, type LucideIcon} from 'lucide-react-native';
+import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 
 interface SettingItem {
@@ -39,15 +40,16 @@ export default function SettingsSection({title, items}: SettingsSectionProps) {
                 styles.row,
                 !isLast && styles.divider,
                 !isLast && {borderBottomColor: theme.border},
-                pressed && styles.pressedRow,
                 pressed && {backgroundColor: theme.pressed},
               ]}>
               <View
                 style={[
                   styles.iconWrap,
-                  {backgroundColor: theme.iconSurface},
-                  item.destructive && styles.destructiveIconWrap,
-                  item.destructive && {backgroundColor: theme.accentMuted},
+                  {
+                    backgroundColor: item.destructive
+                      ? theme.accentMuted
+                      : theme.iconSurface,
+                  },
                 ]}>
                 <Icon
                   color={item.destructive ? theme.accent : theme.icon}
@@ -58,9 +60,7 @@ export default function SettingsSection({title, items}: SettingsSectionProps) {
                 <Text
                   style={[
                     styles.label,
-                    {color: theme.text},
-                    item.destructive && styles.destructiveLabel,
-                    item.destructive && {color: theme.accent},
+                    {color: item.destructive ? theme.accent : theme.text},
                   ]}>
                   {item.label}
                 </Text>
@@ -86,19 +86,14 @@ const styles = StyleSheet.create({
     rowGap: 8,
   },
   sectionTitle: {
-    color: '#5B6559',
     fontSize: 13,
     fontWeight: '800',
     paddingHorizontal: 4,
   },
   card: {
+    ...shadows.raised,
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
   },
   row: {
     alignItems: 'center',
@@ -110,31 +105,21 @@ const styles = StyleSheet.create({
   divider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  pressedRow: {
-    backgroundColor: '#F4F8F1',
-  },
   iconWrap: {
     alignItems: 'center',
-    backgroundColor: '#EEF7EC',
     borderRadius: 14,
     height: 40,
     justifyContent: 'center',
     width: 40,
   },
-  destructiveIconWrap: {
-  },
   textArea: {
     flex: 1,
   },
   label: {
-    color: '#2F352F',
     fontSize: 15,
     fontWeight: '800',
   },
-  destructiveLabel: {
-  },
   description: {
-    color: '#788276',
     fontSize: 12,
     marginTop: 4,
   },

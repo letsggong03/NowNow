@@ -1,8 +1,19 @@
 export type MessageRole = 'user' | 'bot';
 
+export type ChatAction =
+  | 'summarize_yes'
+  | 'summarize_no'
+  | 'solution_yes'
+  | 'solution_no'
+  | 'home'
+  | 'meditation'
+  | 'community';
+
+export type ReliefAction = Extract<ChatAction, 'home' | 'meditation' | 'community'>;
+
 export interface MessageButton {
   label: string;
-  action: string;
+  action: ChatAction;
 }
 
 export interface Message {

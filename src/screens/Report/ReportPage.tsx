@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {ScrollView, StyleSheet, NativeModules, View, Text} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
@@ -8,12 +8,14 @@ import InsightCard from './components/InsightCard';
 import ReportHeader from './components/ReportHeader';
 import StressCauseCard from './components/StressCauseCard';
 import TrendChart from './components/TrendChart';
+import WeeklyReport from './components/WeeklyReport';
+import {metricConfig} from './constants/reportData';
 import {useReport} from './hooks/useReport';
+import type {ReportTab} from './types';
+import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
 import {supabase} from '../../services/supabase';
 import {createMockHealthData} from '../../services/health/mockHealthData';
-
-import WeeklyReportItem from './components/WeeklyReportItem';
 
 const {HealthConnectModule} = NativeModules;
 
@@ -26,13 +28,12 @@ const formatSleep = (minutes?: number) => {
   return `${h}시간 ${m}분`;
 };
 
-const today = new Date();
-
-const dateText = new Intl.DateTimeFormat('ko-KR', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-}).format(new Date());
+const formatToday = () =>
+  new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date());
 
 const formatNumber = (value?: number) => {
   if (value === undefined || value === null) return '-';
@@ -40,8 +41,10 @@ const formatNumber = (value?: number) => {
 };
 
 export default function ReportPage() {
-  const [tab, setTab] = useState<'daily' | 'weekly'>('daily');
+  const [tab, setTab] = useState<ReportTab>('daily');
   const {theme} = useAppTheme();
+  // 모듈 로드 시점이 아니라 화면이 열릴 때의 날짜를 기준으로 한다.
+  const dateText = useMemo(formatToday, []);
 
   const {
     selectedMetric,
@@ -162,16 +165,16 @@ export default function ReportPage() {
 
     <View style={styles.healthGrid}>
       <HealthCard
-        title="심박수"
+        title={metricConfig.heartRate.label}
         value={formatNumber(healthData?.latestHeartRate)}
-        unit="bpm"
+        unit={metricConfig.heartRate.unit}
         Icon={HeartPulse}
         selected={selectedMetric === 'heartRate'}
         onPress={() => setSelectedMetric('heartRate')}
       />
 
       <HealthCard
-        title="혈압"
+        title={metricConfig.bloodPressure.label}
         value={
           healthData?.latestSystolic && healthData?.latestDiastolic
             ? `${Math.round(healthData.latestSystolic)}/${Math.round(
@@ -179,7 +182,7 @@ export default function ReportPage() {
               )}`
             : '-'
         }
-        unit="mmHg"
+        unit={metricConfig.bloodPressure.unit}
         Icon={Activity}
         selected={selectedMetric === 'bloodPressure'}
         onPress={() => setSelectedMetric('bloodPressure')}
@@ -201,12 +204,7 @@ export default function ReportPage() {
       />
       </>
     ) : (
-      <>
-        <WeeklyReportItem title="2026년 6월 둘째 주" />
-        <WeeklyReportItem title="2026년 6월 첫째 주" />
-        <WeeklyReportItem title="2026년 5월 넷째 주" />
-        <WeeklyReportItem title="2026년 5월 셋째 주" />
-      </>
+      <WeeklyReport />
     )}
       </ScrollView>
     </SafeAreaView>
@@ -221,8 +219,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 110,
-    paddingHorizontal: 18,
+    paddingBottom: SCREEN_BOTTOM_INSET,
+    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 18,
     rowGap: 16,
   },

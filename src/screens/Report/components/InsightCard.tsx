@@ -3,6 +3,8 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {AlertCircle, ChevronRight, Sparkles} from 'lucide-react-native';
 
 import {useAppTheme} from '../../../theme/ThemeProvider';
+import {withJosa} from '../../../utils/josa';
+import {insightFallbacks} from '../constants/reportData';
 import type {HrvPoint, StressCause} from '../types';
 import ReportCard from './ReportCard';
 
@@ -23,7 +25,7 @@ export default function InsightCard({
     <>
       <ReportCard style={styles.analysisCard}>
         <View style={styles.titleRow}>
-          <AlertCircle color="#C48239" size={21} />
+          <AlertCircle color={theme.warning} size={21} />
           <Text style={[styles.title, {color: theme.text}]}>스트레스 분석</Text>
         </View>
         <View style={[styles.analysisBox, {backgroundColor: theme.accentMuted}]}>
@@ -34,7 +36,7 @@ export default function InsightCard({
             {peakStress.time}
           </Text>
           <Text style={[styles.description, {color: theme.text}]}>
-            {peakStress.note ?? '업무 관련 스트레스'}
+            {peakStress.note ?? insightFallbacks.peakNote}
           </Text>
         </View>
         <View style={[styles.analysisBox, {backgroundColor: theme.accentMuted}]}>
@@ -45,7 +47,7 @@ export default function InsightCard({
             {lowestStress.time}
           </Text>
           <Text style={[styles.description, {color: theme.text}]}>
-            수면 중 안정적인 흐름
+            {lowestStress.note ?? insightFallbacks.lowestNote}
           </Text>
         </View>
       </ReportCard>
@@ -56,7 +58,7 @@ export default function InsightCard({
           <Text style={[styles.title, {color: theme.text}]}>AI 추천</Text>
         </View>
         <Text style={[styles.recommendText, {color: theme.text}]}>
-          이번 기록에서는 {topCause.cause}가 가장 크게 나타났어요. 짧은
+          이번 기록에서는 {withJosa(topCause.cause, '이/가')} 가장 크게 나타났어요. 짧은
           호흡 루틴이나 10분 산책이 도움이 될 수 있어요.
         </Text>
         <Pressable

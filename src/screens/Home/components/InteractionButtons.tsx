@@ -1,14 +1,10 @@
 import React, {useEffect, useRef} from 'react';
 import {Animated, Pressable, StyleSheet, Text, View} from 'react-native';
-import {
-  ChevronLeft,
-  Gamepad2,
-  Music,
-  PartyPopper,
-  Utensils,
-} from 'lucide-react-native';
+import {ChevronLeft} from 'lucide-react-native';
 
+import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
+import {completedMessages, interactionActions} from '../constants/homeContent';
 import {preferenceLabels} from '../constants/preferenceOptions';
 import type {PreferenceKey, PreferenceOption, UserPreferences} from '../types';
 
@@ -20,24 +16,6 @@ interface InteractionButtonsProps {
   onOptionSelect: (choice: string) => void;
   onCancelOptions: () => void;
 }
-
-const actions: {
-  key: PreferenceKey;
-  label: string;
-  Icon: typeof Utensils;
-}[] = [
-  {key: 'feed', label: '먹이 주기', Icon: Utensils},
-  {key: 'play', label: '놀아 주기', Icon: Gamepad2},
-  {key: 'music', label: '음악 듣기', Icon: Music},
-  {key: 'hobby', label: '휴식 취하기', Icon: PartyPopper},
-];
-
-const completedMessages: Record<PreferenceKey, string> = {
-  feed: '배불러요!',
-  play: '즐거워요!',
-  music: '흥얼거려요!',
-  hobby: '편안해요!',
-};
 
 export default function InteractionButtons({
   selectedAction,
@@ -123,7 +101,7 @@ export default function InteractionButtons({
 
   return (
     <Animated.View style={[styles.grid, animatedStyle]}>
-      {actions.map(({key, label, Icon}) => {
+      {interactionActions.map(({key, label, Icon}) => {
         const completed = Boolean(completedPreferences[key]);
 
         return (
@@ -143,7 +121,6 @@ export default function InteractionButtons({
               style={[
                 styles.label,
                 {color: theme.text},
-                completed && styles.completedLabel,
                 completed && {color: theme.textMuted},
               ]}>
               {completed ? completedMessages[key] : label}
@@ -162,6 +139,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   button: {
+    ...shadows.raised,
     alignItems: 'center',
     borderRadius: 18,
     flexBasis: '47%',
@@ -169,11 +147,6 @@ const styles = StyleSheet.create({
     gap: 9,
     minHeight: 58,
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
   },
   completedButton: {
     shadowOpacity: 0,
@@ -186,18 +159,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  completedLabel: {
-    color: '#7E887E',
-  },
   optionPanel: {
+    ...shadows.raised,
     borderRadius: 20,
     padding: 12,
     rowGap: 9,
-    shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
   },
   optionHeader: {
     alignItems: 'center',

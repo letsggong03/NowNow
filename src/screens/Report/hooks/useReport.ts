@@ -5,12 +5,23 @@ import {
   todayHRVData,
   weeklyStressData,
 } from '../constants/reportData';
-import type {MetricType, ReportPeriod} from '../types';
+import type {MetricType, ReportPeriod, StressCause, StressPeriod} from '../types';
+
+const withPercentage = (
+  causes: Omit<StressCause, 'percentage'>[],
+): StressCause[] => {
+  const total = causes.reduce((sum, item) => sum + item.count, 0);
+
+  return causes.map(item => ({
+    ...item,
+    percentage: total > 0 ? Math.round((item.count / total) * 100) : 0,
+  }));
+};
 
 export const useReport = () => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('heartRate');
   const [period, setPeriod] = useState<ReportPeriod>('day');
-  const [stressPeriod, setStressPeriod] = useState<'week' | 'month'>('week');
+  const [stressPeriod, setStressPeriod] = useState<StressPeriod>('week');
 
   const peakStress = useMemo(
     () =>
@@ -28,8 +39,13 @@ export const useReport = () => {
     [],
   );
 
-  const stressCauses =
-    stressPeriod === 'week' ? weeklyStressData : monthlyStressData;
+  const stressCauses = useMemo(
+    () =>
+      withPercentage(
+        stressPeriod === 'week' ? weeklyStressData : monthlyStressData,
+      ),
+    [stressPeriod],
+  );
 
   return {
     selectedMetric,

@@ -9,9 +9,17 @@ export default function ChatAvatar() {
   return (
     <View style={[styles.avatar, {backgroundColor: theme.accentMuted}]}>
       <View style={[styles.face, {backgroundColor: theme.accent}]}>
-        <View style={styles.eye} />
-        <View style={[styles.eye, styles.rightEye]} />
-        <View style={styles.mouth} />
+        <View style={[styles.eye, {backgroundColor: theme.characterFeature}]} />
+        <View
+          style={[
+            styles.eye,
+            styles.rightEye,
+            {backgroundColor: theme.characterFeature},
+          ]}
+        />
+        <View
+          style={[styles.mouth, {borderBottomColor: theme.characterFeature}]}
+        />
       </View>
       <View style={[styles.leftHand, {backgroundColor: theme.accent}]} />
       <View style={[styles.rightHand, {backgroundColor: theme.accent}]} />
@@ -33,7 +41,6 @@ const styles = StyleSheet.create({
     width: 24,
   },
   eye: {
-    backgroundColor: '#151515',
     borderRadius: 2,
     height: 4,
     left: 7,
@@ -45,7 +52,6 @@ const styles = StyleSheet.create({
     left: 14,
   },
   mouth: {
-    borderBottomColor: '#151515',
     borderBottomWidth: 1,
     borderRadius: 4,
     height: 5,
