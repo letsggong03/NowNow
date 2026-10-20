@@ -60,7 +60,16 @@ NowNow는 **캐릭터를 돌보는 가벼운 상호작용**으로 기분과 취�
 
 ## 🙋 담당 역할
 
-2인 팀 프로젝트예요. UI 화면과 테마는 [@h2st0ry](https://github.com/h2st0ry)가, 아래 부분은 제가 맡았어요.
+4인 팀 프로젝트예요.
+
+| 파트 | 담당 |
+|---|---|
+| 백엔드 | 팀원 1명 |
+| AI | 팀원 1명 |
+| DB ERD 설계, UI 디자인, 초기 프론트엔드 | [@h2st0ry](https://github.com/h2st0ry) |
+| **프론트엔드 마무리** (Android 실기기 구동, 인증, 건강 데이터 연동) | **본인** |
+
+초기 화면 구성을 넘겨받아 **실제로 동작하는 앱으로 완성**하는 일을 맡았어요.
 
 ### 1. Health Connect 네이티브 모듈 (Kotlin)
 - React Native에는 Health Connect를 바로 쓸 수 있는 방법이 마땅치 않아서, **Kotlin으로 네이티브 모듈을 직접 만들고** `NativeModules`로 JS에 연결했어요.
