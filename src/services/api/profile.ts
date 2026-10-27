@@ -1,10 +1,8 @@
 import { supabase } from "../supabase";
 import { getMe } from "./auth";
-import { chatAiConfig } from './chatAiConfig';
 
 // 백엔드(/api/auth/me)를 먼저 쓰고, 서버에 못 붙으면 Supabase에서 직접 읽는다.
 export async function getProfile() {
-  if (chatAiConfig.demoMode === true) return '시연 사용자';
   try {
     const me = await getMe();
     return me.nickname ?? null;
