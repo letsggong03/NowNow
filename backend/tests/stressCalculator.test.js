@@ -7,6 +7,7 @@ const {
   bpScore,
   stepScore,
   sleepFactor,
+  sleepMinutesFromSessions,
   hourlyStress,
   dailyRealtimeStress,
   calculateDailyStress,
@@ -54,6 +55,26 @@ test("SleepFactor 구간", () => {
   assert.equal(sleepFactor(5 * 60 + 30), 1.2);
   assert.equal(sleepFactor(4 * 60), 1.3);
   assert.equal(sleepFactor(3 * 60), 1.5);
+});
+
+test("수면 세션 합계: 겹치는 구간은 한 번만 센다", () => {
+  const session = (start, end) => ({
+    start_time: `2026-10-${start}+09:00`,
+    end_time: `2026-10-${end}+09:00`
+  });
+
+  assert.equal(sleepMinutesFromSessions([]), null);
+  // 밤잠 23:30~05:00 (330분)
+  assert.equal(sleepMinutesFromSessions([session("19T23:30:00", "20T05:00:00")]), 330);
+  // 워치·폰 중복(겹침) + 낮잠 13:00~13:30
+  assert.equal(
+    sleepMinutesFromSessions([
+      session("19T23:30:00", "20T05:00:00"),
+      session("20T00:00:00", "20T05:30:00"),
+      session("20T13:00:00", "20T13:30:00")
+    ]),
+    360 + 30
+  );
 });
 
 const samples = (hourIso, bpms) =>

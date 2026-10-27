@@ -78,6 +78,32 @@ function kstDayRange(date) {
   };
 }
 
+// 수면 세션들의 총 수면 시간(분). 워치·폰이 같은 수면을 각각 기록해 겹칠 수 있어
+// 겹치는 구간은 합쳐서 한 번만 센다. 세션이 없으면 null.
+function sleepMinutesFromSessions(sessions) {
+  const intervals = sessions
+    .map(({ start_time, end_time }) => [Date.parse(start_time), Date.parse(end_time)])
+    .filter(([start, end]) => !Number.isNaN(start) && !Number.isNaN(end) && end > start)
+    .sort((a, b) => a[0] - b[0]);
+
+  if (intervals.length === 0) return null;
+
+  let totalMs = 0;
+  let [curStart, curEnd] = intervals[0];
+
+  for (const [start, end] of intervals.slice(1)) {
+    if (start <= curEnd) {
+      curEnd = Math.max(curEnd, end);
+    } else {
+      totalMs += curEnd - curStart;
+      [curStart, curEnd] = [start, end];
+    }
+  }
+  totalMs += curEnd - curStart;
+
+  return Math.round(totalMs / 60000);
+}
+
 function realtimeStress(avgBpm, heartRateSd) {
   const hr = hrScore(avgBpm);
   const phrv = phrvScore(heartRateSd);
@@ -205,6 +231,7 @@ module.exports = {
   bpScore,
   stepScore,
   sleepFactor,
+  sleepMinutesFromSessions,
   realtimeStress,
   hourlyStress,
   dailyRealtimeStress,
