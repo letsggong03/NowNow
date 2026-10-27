@@ -6,6 +6,7 @@ const authRoutes = require("./routes/auth");
 const communityRoutes = require("./routes/community");
 const chatRoutes = require("./routes/chat");
 const reportRoutes = require("./routes/report");
+const stressRoutes = require("./routes/stress");
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/community", communityRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/stress", stressRoutes);
 
 app.get("/", (req, res) => {
   res.send("Node.js Supabase server is running");
