@@ -20,9 +20,10 @@ export class ApiError extends Error {
   }
 }
 
-type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 interface RequestOptions {
+  timeoutMs?: number;
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
   // 기본값 true. 토큰이 있으면 Authorization 헤더를 붙인다.
@@ -60,7 +61,7 @@ export const getCurrentUserId = async () => {
 export async function request<T>(
   method: HttpMethod,
   path: string,
-  {query, body, auth = true}: RequestOptions = {},
+  {query, body, auth = true, timeoutMs = 12000}: RequestOptions = {},
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -73,11 +74,15 @@ export async function request<T>(
     }
   }
 
-  const response = await fetch(buildUrl(path, query), {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+  try {response = await fetch(buildUrl(path, query), {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
-  });
+    signal: controller.signal,
+  });} finally {clearTimeout(timeout);}
 
   const text = await response.text();
   let json: any = null;

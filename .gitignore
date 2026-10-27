@@ -74,10 +74,13 @@ yarn-error.log
 !.yarn/sdks
 !.yarn/versions
 
-# Local chatbot credentials and backend address
-src/services/api/chatAiConfig.ts
-src/services/api/backendConfig.ts
+# Backend secrets
 .env
 .env.*
 !.env.example
+
+src/services/api/chatAiConfig.ts
+
+src/services/api/backendConfig.ts
+
 .wrangler/

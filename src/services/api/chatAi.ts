@@ -1,4 +1,5 @@
 import { chatAiConfig as cloudConfig } from './chatAiConfig';
+import {request} from './client';
 const errors: Record<string, string> = {
   API_KEY_REQUIRED: 'AI 서버의 API 키를 설정해 주세요.',
   SERVER_NOT_READY: 'AI 서버 설정이 아직 완료되지 않았어요.',
@@ -12,6 +13,11 @@ export async function requestReply(
   message: string,
   history: ChatTurn[] = [],
 ): Promise<string> {
+  if ((cloudConfig as {useBackendAi?: boolean}).useBackendAi) {
+    const result = await request<{data:{reply:string}}>('POST','/api/chat/reply',{body:{message,history}, timeoutMs:60000});
+    if (typeof result.data?.reply !== 'string' || !result.data.reply.trim()) throw new Error('AI 답변을 읽지 못했습니다.');
+    return result.data.reply;
+  }
   if (!cloudConfig.url || !cloudConfig.token)
     throw new Error(
       'AI 연결 설정이 필요합니다. CHATBOT_INTEGRATION.md를 확인해 주세요.',

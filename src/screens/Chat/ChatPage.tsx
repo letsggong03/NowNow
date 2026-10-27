@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,16 @@ import MessageBubble from './components/MessageBubble';
 import { useChatDiary } from './hooks/useChatDiary';
 import { useAppTheme } from '../../theme/ThemeProvider';
 import { chatAiConfig } from '../../services/api/chatAiConfig';
+import type {HealthContext} from '../../services/health/context';
+
+const describeHealth = (doc: HealthContext['documents'][number]) => {
+  const f = doc.facts;
+  if (doc.kind === 'stress') return `스트레스 참고 지표 ${f.score}/100 · ${f.hours}개 시간 구간으로 계산`;
+  if (doc.kind === 'heart') return `최근 심박수 ${f.latestBpm} bpm · 평균 ${f.averageBpm} bpm · ${f.samples}회 기록`;
+  if (doc.kind === 'sleep') return `수면 ${Math.floor(Number(f.minutes)/60)}시간 ${Number(f.minutes)%60}분`;
+  if (doc.kind === 'steps') return `걸음 수 ${Number(f.count).toLocaleString()}걸음`;
+  return `평균 수축기 혈압 ${f.averageSystolic} mmHg`;
+};
 
 interface ChatPageProps {
   date?: string;
@@ -43,6 +53,7 @@ const formatChatDate = (date?: string) => {
 export default function ChatPage({ date, onBack }: ChatPageProps) {
   const { theme } = useAppTheme();
   const scrollViewRef = useRef<ScrollView>(null);
+  const [showEvidence, setShowEvidence] = useState(false);
   const {
     messages,
     input,
@@ -58,6 +69,8 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
     retrySave,
     resetting,
     resetConversation,
+    healthContext,
+    storageStatus,
   } = useChatDiary();
 
   useEffect(() => {
@@ -75,6 +88,11 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
       >
         <View style={[styles.chatPanel, { backgroundColor: theme.background }]}>
           <ChatHeader title={formatChatDate(date)} onBack={onBack} />
+          <Text style={{color: theme.textMuted, textAlign: 'center'}}>{storageStatus}</Text>
+          <Pressable accessibilityRole="button" disabled={loading || sending || resetting}
+            onPress={() => handleSend('오늘 내 스트레스와 건강 기록을 보고 지금 할 수 있는 관리 방법을 알려줘')}>
+            <Text style={[styles.statusAction, {color: theme.accent}]}>내 스트레스·건강 기록으로 상담하기</Text>
+          </Pressable>
           {chatAiConfig.demoMode === true && (
             <Pressable accessibilityRole="button" disabled={loading || sending || resetting}
               onPress={() => Alert.alert('대화 초기화',
@@ -96,6 +114,19 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
               scrollViewRef.current?.scrollToEnd({ animated: true })
             }
           >
+            {healthContext && <View style={{padding: 12, backgroundColor: theme.surface}}>
+              <Text style={{color: theme.text, fontWeight: '700'}}>조회한 건강 근거 · {healthContext.range.from} ~ {healthContext.range.to}</Text>
+              {healthContext.documents.length === 0 && <Text style={{color: theme.text}}>조회된 건강 기록 없음 · 수치를 추측하지 않습니다.</Text>}
+              {(showEvidence ? healthContext.documents : healthContext.documents.slice(0,3)).map(doc => <Text key={doc.id} selectable style={{color: theme.text, marginTop: 5}}>
+                {doc.date} · {describeHealth(doc)}
+                {showEvidence ? `\n[${doc.id}] ${doc.source}` : ''}
+              </Text>)}
+              {healthContext.documents.length > 0 && <Pressable accessibilityRole="button" onPress={() => setShowEvidence(value => !value)}>
+                <Text style={{color:theme.accent,paddingVertical:8}}>{showEvidence ? '근거 접기' : '측정 근거 자세히 보기'}</Text>
+              </Pressable>}
+              <Text style={{color: theme.textMuted}}>{healthContext.status.join(' · ')}</Text>
+              <Text style={{color: theme.textMuted}}>{healthContext.notice}</Text>
+            </View>}
             {messages.map((message, index) => (
               <MessageBubble
                 key={`${message.role}-${index}`}

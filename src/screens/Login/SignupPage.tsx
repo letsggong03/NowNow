@@ -25,33 +25,21 @@ export default function SignupScreen({ navigation }: any) {
   }
 
   try {
-    // 1️⃣ auth.users 생성 (기본 유저)
+    // auth.users 생성. 닉네임은 메타데이터에 담아 두고,
+    // 프로필(user_informations) 행은 세션이 생기면 RootNavigator가 만든다.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: { data: { nickname } },
     });
 
     if (error) throw error;
 
-    const user = data.user;
-
-    if (!user) {
+    if (!data.user) {
       throw new Error("유저 생성 실패");
     }
 
-    // 2️⃣ nickname만 따로 저장
-    const { error: insertError } = await supabase
-      .from("user_informations")
-      .insert([
-        {
-          id: user.id,
-          nickname: nickname,
-        },
-      ]);
-
-    if (insertError) throw insertError;
-
-    console.log("회원가입 + 닉네임 저장 성공");
+    console.log("회원가입 성공");
 
     Alert.alert(
       "회원가입 성공",

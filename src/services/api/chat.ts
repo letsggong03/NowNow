@@ -4,6 +4,7 @@ import {getCurrentUserId, request} from './client';
 export type ChatRole = 'USER' | 'AI';
 
 export interface ChatMessageRecord {
+  server_chat_id?: number;
   chat_id: number;
   user_id: string;
   chat_role: ChatRole;
@@ -46,12 +47,12 @@ export const deleteChatMessage = async (chat_id: number) => {
   });
 };
 
-export const saveChatSummary = async (chat_id: number, summary: string) => {
+export const saveChatSummary = async (chat_id: number, summary: string, keywords: string[] = []) => {
   const user_id = await getCurrentUserId();
   const res = await request<{message: string; data: ChatSummaryRecord}>(
     'POST',
     '/api/chat/summary',
-    {body: {chat_id, user_id, summary}},
+    {body: {chat_id, user_id, summary, keywords}},
   );
   return res.data;
 };

@@ -1,4 +1,5 @@
 import { requestReply } from './chatAi';
+import type {HealthContext} from '../health/context';
 
 export const causeKeywords = [
   '업무 스트레스',
@@ -65,12 +66,15 @@ export async function summarizeDay(story: string[]): Promise<DaySummary> {
     keywords: [...new Set(data.keywords as string[])].slice(0, 3),
   };
 }
-export async function suggestSolutions(story: string[]): Promise<DaySolutions> {
+export async function suggestSolutions(story: string[], healthContext?: HealthContext | null): Promise<DaySolutions> {
+  story = story.slice(-6).map(line => line.slice(-120));
+  const evidence = healthContext?.documents.slice(0,2).map(doc => ({id:doc.id,date:doc.date,facts:doc.facts}));
+  const healthInstruction = evidence?.length ? ` 실제 조회 건강 자료(JSON, 진단 아님): ${JSON.stringify(evidence)}. 자료의 날짜·결측을 고려하고 수치를 만들지 마세요.` : '';
   const data = parse(
     await requestReply(
       storyPrompt(
         story,
-        '오늘 대화에 맞는 작고 구체적인 생활관리 제안을 한국어로 2~3개 작성하세요. 각 제안은 한 문장으로 작성하세요. 형식: {"solutions":["제안"],"reliefActions":["meditation"]}. reliefActions는 home, meditation, community 중 관련 있는 항목만 선택하세요. 활동 실행이나 화면 이동이 완료됐다고 말하지 마세요.',
+        '오늘 대화에 맞는 작고 구체적인 생활관리 제안을 한국어로 2~3개 작성하세요. 각 제안은 한 문장으로 작성하세요. 형식: {"solutions":["제안"],"reliefActions":["meditation"]}. reliefActions는 home, meditation, community 중 관련 있는 항목만 선택하세요. 활동 실행이나 화면 이동이 완료됐다고 말하지 마세요.' + healthInstruction,
       ),
     ),
   );

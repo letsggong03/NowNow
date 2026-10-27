@@ -2,9 +2,9 @@ let mockDisk: string | null = null;
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
   default: {
-    getItem: jest.fn(async () => mockDisk),
-    setItem: jest.fn(async (_key: string, value: string) => {
-      mockDisk = value;
+    getItem: jest.fn(async (key: string) => key.endsWith('/summary') ? null : mockDisk),
+    setItem: jest.fn(async (key: string, value: string) => {
+      if (!key.endsWith('/summary')) mockDisk = value;
     }),
   },
 }));

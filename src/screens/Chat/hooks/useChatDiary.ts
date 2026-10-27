@@ -12,9 +12,13 @@ import {
 import {
   getChatMessages,
   clearDemoMessages,
+  persistSummary,
+  getServerSyncStatus,
   saveChatMessage,
 } from '../../../services/chatStorage';
 import { requestReply, type ChatTurn } from '../../../services/api/chatAi';
+import {retrieveHealthContext, type HealthContext} from '../../../services/health/context';
+const {groundedPrompt} = require('../../../../shared/healthRetrieval');
 import { chatAiConfig } from '../../../services/api/chatAiConfig';
 import {
   summarizeDay,
@@ -49,6 +53,7 @@ export const useChatDiary = () => {
   const [input, setInput] = useState('');
   const [stage, setStage] = useState<ChatStage>('initial');
   const summaryCache = useRef<{ key: string; data: DaySummary } | null>(null);
+  const summarySavedKey = useRef<string | null>(null);
   const solutionsCache = useRef<{ key: string; data: DaySolutions } | null>(
     null,
   );
@@ -56,6 +61,8 @@ export const useChatDiary = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [healthContext, setHealthContext] = useState<HealthContext | null>(null);
+  const [storageStatus, setStorageStatus] = useState('대화는 이 폰에 저장');
   const [error, setError] = useState('');
   const [requestError, setRequestError] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -79,11 +86,13 @@ export const useChatDiary = () => {
       timers.current = [];
       queue.current = [];
       summaryCache.current = null;
+      summarySavedKey.current = null;
       solutionsCache.current = null;
       if (active.current) {
         setMessages([createMessage('bot', chatScript.greeting)]);
         setInput('');
         setUserStory([]);
+        setHealthContext(null);
         setStage('initial');
         setError('');
         setSaveError('');
@@ -116,6 +125,7 @@ export const useChatDiary = () => {
         queue.current.shift();
       }
       if (active.current) setSaveError('');
+      if (active.current) setStorageStatus(getServerSyncStatus());
     } catch {
       if (active.current)
         setSaveError(
@@ -171,6 +181,15 @@ export const useChatDiary = () => {
   useEffect(() => {
     active.current = true;
     restore();
+    retrieveHealthContext('오늘 스트레스').then(context => {
+      if (!active.current) return;
+      setHealthContext(context);
+      const score = context.documents.find(doc => doc.kind === 'stress')?.facts.score;
+      if (typeof score === 'number' && score >= 70) {
+        setMessages(previous => [...previous, createMessage('bot',
+          `오늘 기록으로 계산한 앱 내부 스트레스 지표가 ${score}/100이에요. 진단 수치는 아니며 활동과 측정 조건의 영향을 받을 수 있어요. 지금 느끼는 상태를 알려주시면 기록을 함께 보고 무리 없는 휴식 방법을 찾아볼게요.`)]);
+      }
+    }).catch(() => {});
     const scheduled = timers.current;
     return () => {
       active.current = false;
@@ -184,8 +203,8 @@ export const useChatDiary = () => {
     retrySave();
   };
 
-  const handleSend = async () => {
-    const trimmedInput = input.trim();
+  const handleSend = async (question?: string) => {
+    const trimmedInput = (typeof question === 'string' ? question : input).trim();
     if (!trimmedInput || lock.current || loading || error || saveError) return;
     if (trimmedInput.length > 2000) {
       setRequestError('메시지는 2000자 이내로 입력해 주세요.');
@@ -212,7 +231,12 @@ export const useChatDiary = () => {
     setMessages(prev => [...prev, pendingUser]);
     setInput('');
     try {
-      const reply = await requestReply(trimmedInput, history.slice(-10));
+      let context: HealthContext;
+      try {context = await retrieveHealthContext(trimmedInput);}
+      catch {context = {range: {from: '', to: ''}, documents: [], missing: [], status: ['건강 기록 조회 실패'], notice: '건강 수치를 확인하지 못했습니다.'};}
+      if (!active.current) return;
+      setHealthContext(context);
+      const reply = await requestReply(groundedPrompt(trimmedInput, context), history.slice(-10));
       if (!active.current) return;
       const user = createMessage('user', trimmedInput);
       const bot = createMessage('bot', reply);
@@ -264,6 +288,11 @@ export const useChatDiary = () => {
               : await summarizeDay(userStory);
           if (!active.current) return;
           summaryCache.current = { key, data: analysis };
+          if (summarySavedKey.current !== key) {
+            const status = await persistSummary(analysis.summary, analysis.keywords);
+            setStorageStatus(status);
+            if (!status.includes('실패') && !status.includes('필요합니다')) summarySavedKey.current = key;
+          }
 
           appendMessages(
             createMessage(
@@ -292,7 +321,7 @@ export const useChatDiary = () => {
           const analysis =
             solutionsCache.current?.key === key
               ? solutionsCache.current.data
-              : await suggestSolutions(userStory);
+              : await suggestSolutions(userStory, healthContext);
           if (!active.current) return;
           solutionsCache.current = { key, data: analysis };
 
@@ -343,6 +372,8 @@ export const useChatDiary = () => {
   };
 
   return {
+    storageStatus,
+    healthContext,
     resetting,
     resetConversation,
     loading,

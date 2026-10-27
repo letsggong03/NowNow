@@ -4,7 +4,6 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {Activity, Footprints, HeartPulse, Moon} from 'lucide-react-native';
 import HealthCard from './components/HealthCard';
-import InsightCard from './components/InsightCard';
 import ReportHeader from './components/ReportHeader';
 import StressCauseCard from './components/StressCauseCard';
 import TrendChart from './components/TrendChart';
@@ -14,8 +13,8 @@ import {useReport} from './hooks/useReport';
 import type {ReportTab} from './types';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
-import {supabase} from '../../services/supabase';
 import {chatAiConfig} from '../../services/api/chatAiConfig';
+import {syncHealth} from '../../services/health/sync';
 
 const {HealthConnectModule} = NativeModules;
 
@@ -51,8 +50,9 @@ export default function ReportPage() {
     setSelectedMetric,
     stressPeriod,
     setStressPeriod,
-    peakStress,
-    lowestStress,
+    daily,
+    recommendation,
+    reportStatus,
     stressCauses,
   } = useReport();
 
@@ -77,7 +77,8 @@ export default function ReportPage() {
       setHealthStatus(data.heartRateSamples?.length || data.latestSleepMinutes || data.stepsTotal
         ? 'Health Connect 실제 조회 데이터 · 항목별 미측정 값은 - 표시'
         : '권한 허용 · 데이터 없음. 삼성 헬스의 Health Connect 데이터 쓰기 설정을 확인해 주세요.');
-      if (chatAiConfig.demoMode !== true) await saveRawHealthData(data);
+      const syncErrors = await syncHealth(data);
+      if (syncErrors.length) setHealthStatus(syncErrors.join(' · '));
     } catch {
       setHealthStatus('건강 조회 실패 · Health Connect 설치/권한/삼성 헬스 연결을 확인해 주세요.');
     } finally {
@@ -99,7 +100,8 @@ export default function ReportPage() {
         setHealthStatus(data.heartRateSamples?.length || data.latestSleepMinutes || data.stepsTotal
           ? 'Health Connect 실제 조회 데이터 · 항목별 미측정 값은 - 표시'
           : '조회 완료 · 저장된 건강 데이터 없음');
-        if (chatAiConfig.demoMode !== true) await saveRawHealthData(data);
+        const syncErrors = await syncHealth(data);
+        if (syncErrors.length) setHealthStatus(syncErrors.join(' · '));
       } catch (e) {
         console.log('HealthConnect 에러:', e);
         setHealthStatus('건강 데이터 조회 실패 · Health Connect 권한/연결 확인 필요');
@@ -108,50 +110,6 @@ export default function ReportPage() {
 
     loadHealthData();
   }, []);
-
-  const saveRawHealthData = async (data: any) => {
-    const {
-      data: {user},
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    const userId = user.id;
-
-    if (data.heartRateSamples?.length > 0) {
-      await supabase.from('heart_rate_records').upsert(
-        data.heartRateSamples.map((item: any) => ({
-          user_id: userId,
-          measured_at: item.time,
-          bpm: item.bpm,
-        })),
-        {onConflict: 'user_id,measured_at'},
-      );
-    }
-
-    if (data.bloodPressureSamples?.length > 0) {
-      await supabase.from('blood_pressure_records').upsert(
-        data.bloodPressureSamples.map((item: any) => ({
-          user_id: userId,
-          measured_at: item.time,
-          systolic: item.systolic,
-          diastolic: item.diastolic,
-        })),
-        {onConflict: 'user_id,measured_at'},
-      );
-    }
-
-    if (data.oxygenSamples?.length > 0) {
-      await supabase.from('oxygen_records').upsert(
-        data.oxygenSamples.map((item: any) => ({
-          user_id: userId,
-          measured_at: item.time,
-          percentage: item.percentage,
-        })),
-        {onConflict: 'user_id,measured_at'},
-      );
-    }
-  };
 
   return (
     <SafeAreaView
@@ -180,10 +138,10 @@ export default function ReportPage() {
           </Text>
         </Pressable>}
         <Text style={{color: theme.textMuted}}>
-          {tab === 'daily' ? healthStatus : '주간 차트는 팀 원본의 화면 예시 데이터입니다. 실제 사용자 분석은 백엔드 서버 연결 필요.'}
+          {tab === 'daily' ? healthStatus : '주간 리포트 · 본인 계정에 저장된 실제 기록'}
         </Text>
         {chatAiConfig.demoMode === true && (
-          <Text style={{color: theme.textMuted}}>로그인 생략으로 Supabase 계정 저장은 사용하지 않습니다.</Text>
+          <Text style={{color: theme.textMuted}}>로그인한 본인 계정으로 건강 자료 동기화 · 실패 시 상태 표시</Text>
         )}
 
     {tab === 'daily' ? (
@@ -230,7 +188,11 @@ export default function ReportPage() {
       </View>
 
       <TrendChart selectedMetric={selectedMetric} healthData={healthData} />
-      <Text style={{color: theme.textMuted}}>아래 스트레스 원인·요약은 팀 원본의 화면 예시입니다. 실제 기록 분석은 백엔드 서버 연결 필요.</Text>
+      <Text style={{color: theme.textMuted}}>{reportStatus}</Text>
+      <Text style={{color: theme.text}}>오늘 스트레스 지표: {daily?.finalDailyStressScore ?? '데이터 없음'}{daily?.finalDailyStressScore != null ? ' / 100' : ''}</Text>
+      {!!daily?.missing?.length && <Text style={{color: theme.textMuted}}>부족한 자료: {daily.missing.join(', ')}</Text>}
+      {!!recommendation?.message && <Text style={{color: theme.text}}>{recommendation.message}</Text>}
+      {!!recommendation?.routine && <Text style={{color: theme.text}}>{recommendation.routine.title}{'\n'}{recommendation.routine.steps.join('\n')}</Text>}
 
       <StressCauseCard
         causes={stressCauses}
@@ -238,11 +200,7 @@ export default function ReportPage() {
         onPeriodChange={setStressPeriod}
       />
 
-      <InsightCard
-        peakStress={peakStress}
-        lowestStress={lowestStress}
-        topCause={stressCauses[0]}
-      />
+      {stressCauses.length === 0 && <Text style={{color: theme.textMuted}}>저장된 요약 키워드가 없습니다. 채팅에서 하루 요약을 저장하면 원인 통계에 반영됩니다.</Text>}
       </>
     ) : (
       <WeeklyReport />

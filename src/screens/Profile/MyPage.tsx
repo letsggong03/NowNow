@@ -23,8 +23,9 @@ export default function MyPage() {
   const {theme} = useAppTheme();
 
   // 세션이 사라지면 RootNavigator가 로그인 화면으로 전환한다.
-  const handleLogout = () => {
-    if (chatAiConfig.demoMode === true) {
+  const handleLogout = async () => {
+    const {data} = await supabase.auth.getSession();
+    if (!data.session && chatAiConfig.demoMode === true) {
       Alert.alert('시연 모드', '현재 로그인 없이 사용 중입니다. 팀 계정 로그인·서버 저장은 연결 후 사용할 수 있습니다.');
       return;
     }

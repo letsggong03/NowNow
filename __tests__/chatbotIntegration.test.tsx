@@ -14,6 +14,11 @@ jest.mock('../src/services/api/chat', () => ({
   saveChatMessage: jest.fn(),
 }));
 jest.mock('../src/services/api/chatAi', () => ({ requestReply: jest.fn() }));
+jest.mock('../src/services/health/context', () => ({retrieveHealthContext: jest.fn(async () => ({range:{from:'2026-10-28',to:'2026-10-28'},documents:[],status:[],missing:[]}))}));
+jest.mock('../src/services/chatStorage', () => ({
+  ...jest.requireActual('../src/services/chatStorage'),
+  persistSummary: jest.fn(async () => '요약 저장 완료'),
+}));
 let state: ReturnType<typeof useChatDiary>;
 let app: Renderer.ReactTestRenderer;
 function Harness() {
@@ -71,9 +76,10 @@ test('restores DB history, limits AI context and blocks duplicate sends', async 
       }),
   );
   let sending!: Promise<void>;
-  act(() => {
+  await act(async () => {
     sending = state!.handleSend();
     void state!.handleSend();
+    await Promise.resolve();
   });
   expect(requestReply).toHaveBeenCalledTimes(1);
   expect((requestReply as jest.Mock).mock.calls[0][1]).toHaveLength(10);
