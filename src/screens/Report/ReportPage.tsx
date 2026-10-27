@@ -90,8 +90,15 @@ export default function ReportPage() {
 
     const userId = user.id;
 
+    // 실패해도 화면 표시는 계속하되, RLS·스키마 문제를 알 수 있게 로그는 남긴다.
+    const logSaveError = (table: string, error: {message: string} | null) => {
+      if (error) {
+        console.log(`[saveRawHealthData] ${table} 저장 실패:`, error.message);
+      }
+    };
+
     if (data.heartRateSamples?.length > 0) {
-      await supabase.from('heart_rate_records').upsert(
+      const {error} = await supabase.from('heart_rate_records').upsert(
         data.heartRateSamples.map((item: any) => ({
           user_id: userId,
           measured_at: item.time,
@@ -99,10 +106,11 @@ export default function ReportPage() {
         })),
         {onConflict: 'user_id,measured_at'},
       );
+      logSaveError('heart_rate_records', error);
     }
 
     if (data.bloodPressureSamples?.length > 0) {
-      await supabase.from('blood_pressure_records').upsert(
+      const {error} = await supabase.from('blood_pressure_records').upsert(
         data.bloodPressureSamples.map((item: any) => ({
           user_id: userId,
           measured_at: item.time,
@@ -111,10 +119,11 @@ export default function ReportPage() {
         })),
         {onConflict: 'user_id,measured_at'},
       );
+      logSaveError('blood_pressure_records', error);
     }
 
     if (data.oxygenSamples?.length > 0) {
-      await supabase.from('oxygen_records').upsert(
+      const {error} = await supabase.from('oxygen_records').upsert(
         data.oxygenSamples.map((item: any) => ({
           user_id: userId,
           measured_at: item.time,
@@ -122,6 +131,7 @@ export default function ReportPage() {
         })),
         {onConflict: 'user_id,measured_at'},
       );
+      logSaveError('oxygen_records', error);
     }
   };
 

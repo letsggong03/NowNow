@@ -1,5 +1,23 @@
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import { getMe } from "./auth";
+
+// 이메일 인증을 거치면 가입 직후에는 세션이 없어 RLS 때문에 프로필을 넣을 수 없다.
+// 그래서 닉네임은 가입 때 user_metadata에 담아 두고, 세션이 생기면 프로필 행을 만든다.
+// 이미 있으면 건드리지 않는다.
+export async function ensureProfile(user: User) {
+  const { error } = await supabase.from("user_informations").upsert(
+    {
+      user_id: user.id,
+      nickname: user.user_metadata?.nickname ?? "사용자",
+    },
+    { onConflict: "user_id", ignoreDuplicates: true }
+  );
+
+  if (error) {
+    console.log("[ensureProfile] 프로필 저장 실패:", error.message);
+  }
+}
 
 // 백엔드(/api/auth/me)를 먼저 쓰고, 서버에 못 붙으면 Supabase에서 직접 읽는다.
 export async function getProfile() {
@@ -19,13 +37,15 @@ export async function getProfile() {
   const { data, error } = await supabase
     .from("user_informations")
     .select("nickname")
-    .eq("id", user.id)
-    .single();
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   if (error) {
     console.log(error);
-    return null;
   }
 
-  return data.nickname as string | null;
+  // 프로필 행이 아직 없으면 가입 때 넣은 닉네임을 쓴다.
+  return (data?.nickname ?? user.user_metadata?.nickname ?? null) as
+    | string
+    | null;
 }
