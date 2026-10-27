@@ -1,2 +1,6 @@
-// 실제 인증값은 GitHub에 올리지 않습니다.
-export const chatAiConfig = {url: '', token: ''};
+export const chatAiConfig: { url: string; token: string; demoMode?: boolean } =
+  {
+    url: '',
+    token: '',
+    demoMode: false,
+  };

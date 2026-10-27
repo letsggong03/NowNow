@@ -10,7 +10,7 @@ export const chatDelays = {
 };
 
 export const chatScript = {
-  greeting: '오늘 기분이 좋지 않아 보여... 무슨 일 있어?',
+  greeting: '안녕하세요! 오늘 하루는 어떠셨나요? 편하게 들려주세요.',
   listeningReplies: [
     '그랬군요! 더 이야기해 주시겠어요?',
     '정말 힘드셨겠어요.',
@@ -42,7 +42,7 @@ export const reliefButtons: MessageButton[] = [
 ];
 
 export const reliefResponses: Record<ReliefAction, string> = {
-  home: '편안한 조명과 온도로 집안 분위기를 조성해드릴게요.',
-  meditation: '명상 도우미를 실행할게요.',
-  community: '커뮤니티로 이동합니다.',
+  home: '편안한 공간에서 잠시 쉬어보세요. 이 버튼은 활동 제안이며 기기를 제어하지 않아요.',
+  meditation: '편안하게 앉아 잠시 천천히 호흡해보세요.',
+  community: '믿을 만한 사람에게 이야기를 나눠보는 것도 좋아요. 커뮤니티 연결은 준비 중이에요.',
 };

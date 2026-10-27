@@ -9,9 +9,18 @@ import {
   SUMMARY_OFFER_THRESHOLD,
   summaryButtons,
 } from '../constants/chatScript';
-import { getChatMessages, saveChatMessage } from '../../../services/api/chat';
+import {
+  getChatMessages,
+  saveChatMessage,
+} from '../../../services/chatStorage';
 import { requestReply, type ChatTurn } from '../../../services/api/chatAi';
-import { analyzeStory } from '../utils/analyzeStory';
+import { chatAiConfig } from '../../../services/api/chatAiConfig';
+import {
+  summarizeDay,
+  suggestSolutions,
+  type DaySummary,
+  type DaySolutions,
+} from '../../../services/api/chatAiFeatures';
 import type { ChatAction, ChatStage, Message, MessageRole } from '../types';
 
 const getCurrentMessageTime = () =>
@@ -38,6 +47,10 @@ export const useChatDiary = () => {
   ]);
   const [input, setInput] = useState('');
   const [stage, setStage] = useState<ChatStage>('initial');
+  const summaryCache = useRef<{ key: string; data: DaySummary } | null>(null);
+  const solutionsCache = useRef<{ key: string; data: DaySolutions } | null>(
+    null,
+  );
   const [userStory, setUserStory] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -72,7 +85,9 @@ export const useChatDiary = () => {
     } catch {
       if (active.current)
         setSaveError(
-          '대화를 서버에 저장하지 못했어요. 화면을 나가기 전에 다시 저장해 주세요.',
+          chatAiConfig.demoMode
+            ? '대화를 폰에 저장하지 못했어요. 저장 공간을 확인하고 다시 저장해 주세요.'
+            : '대화를 서버에 저장하지 못했어요. 화면을 나가기 전에 다시 저장해 주세요.',
         );
     } finally {
       saving.current = false;
@@ -98,11 +113,22 @@ export const useChatDiary = () => {
           ? restored
           : [createMessage('bot', chatScript.greeting)],
       );
-      setUserStory(restored.filter(m => m.role === 'user').map(m => m.content));
+      setUserStory(
+        saved
+          .filter(
+            row =>
+              row.chat_role === 'USER' &&
+              new Date(row.created_at).toDateString() ===
+                new Date().toDateString(),
+          )
+          .map(row => row.message),
+      );
     } catch {
       if (active.current)
         setError(
-          '대화 기록을 불러오지 못했어요. 로그인과 백엔드 연결을 확인하고 다시 불러와 주세요.',
+          chatAiConfig.demoMode
+            ? '폰의 시연 대화를 불러오지 못했어요. 다시 불러와 주세요.'
+            : '대화 기록을 불러오지 못했어요. 로그인과 백엔드 연결을 확인하고 다시 불러와 주세요.',
         );
     } finally {
       if (active.current) setLoading(false);
@@ -185,56 +211,100 @@ export const useChatDiary = () => {
     }
   };
 
-  const handleButtonClick = (action: ChatAction) => {
+  const handleButtonClick = async (action: ChatAction) => {
     if (lock.current || loading || error || saveError) return;
-    switch (action) {
-      case 'summarize_yes': {
-        const analysis = analyzeStory(userStory);
+    const analysisAction =
+      action === 'summarize_yes' || action === 'solution_yes';
+    if (analysisAction) {
+      lock.current = true;
+      setSending(true);
+      setRequestError('');
+    }
+    try {
+      switch (action) {
+        case 'summarize_yes': {
+          const key = JSON.stringify(userStory);
+          const analysis =
+            summaryCache.current?.key === key
+              ? summaryCache.current.data
+              : await summarizeDay(userStory);
+          if (!active.current) return;
+          summaryCache.current = { key, data: analysis };
 
-        appendMessages(
-          createMessage(
-            'bot',
-            `${analysis.summary}\n\n${
-              chatScript.keywordsLabel
-            }: ${analysis.keywords.join(' ')}`,
-          ),
-        );
-        setStage('summary_shown');
-
-        later(() => {
           appendMessages(
-            createMessage('bot', chatScript.solutionOffer, solutionButtons),
+            createMessage(
+              'bot',
+              `${analysis.summary}\n\n${chatScript.keywordsLabel}: ${
+                analysis.keywords.map(word => '#' + word).join(' ') ||
+                '기록 근거 없음'
+              }`,
+            ),
           );
-          setStage('solution_confirm');
-        }, chatDelays.followUp);
-        break;
-      }
-      case 'summarize_no':
-        appendMessages(createMessage('bot', chatScript.summaryDeclined));
-        break;
-      case 'solution_yes': {
-        const analysis = analyzeStory(userStory);
+          setStage('summary_shown');
 
-        appendMessages(
-          ...analysis.solutions.map(solution => createMessage('bot', solution)),
-        );
+          later(() => {
+            appendMessages(
+              createMessage('bot', chatScript.solutionOffer, solutionButtons),
+            );
+            setStage('solution_confirm');
+          }, chatDelays.followUp);
+          break;
+        }
+        case 'summarize_no':
+          appendMessages(createMessage('bot', chatScript.summaryDeclined));
+          break;
+        case 'solution_yes': {
+          const key = JSON.stringify(userStory);
+          const analysis =
+            solutionsCache.current?.key === key
+              ? solutionsCache.current.data
+              : await suggestSolutions(userStory);
+          if (!active.current) return;
+          solutionsCache.current = { key, data: analysis };
 
-        later(() => {
           appendMessages(
-            createMessage('bot', chatScript.reliefOffer, reliefButtons),
+            ...analysis.solutions.map(solution =>
+              createMessage('bot', solution),
+            ),
           );
-          setStage('solution_shown');
-        }, chatDelays.reliefOffer);
-        break;
+
+          later(() => {
+            appendMessages(
+              createMessage(
+                'bot',
+                chatScript.reliefOffer,
+                reliefButtons.filter(button =>
+                  analysis.reliefActions.includes(
+                    button.action as 'home' | 'meditation' | 'community',
+                  ),
+                ),
+              ),
+            );
+            setStage('solution_shown');
+          }, chatDelays.reliefOffer);
+          break;
+        }
+        case 'solution_no':
+          appendMessages(createMessage('bot', chatScript.solutionDeclined));
+          break;
+        case 'home':
+        case 'meditation':
+        case 'community':
+          appendMessages(createMessage('bot', reliefResponses[action]));
+          break;
       }
-      case 'solution_no':
-        appendMessages(createMessage('bot', chatScript.solutionDeclined));
-        break;
-      case 'home':
-      case 'meditation':
-      case 'community':
-        appendMessages(createMessage('bot', reliefResponses[action]));
-        break;
+    } catch (failure) {
+      if (active.current)
+        setRequestError(
+          failure instanceof Error
+            ? failure.message
+            : 'AI 분석을 다시 시도해 주세요.',
+        );
+    } finally {
+      if (analysisAction) {
+        lock.current = false;
+        if (active.current) setSending(false);
+      }
     }
   };
 
