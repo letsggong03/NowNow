@@ -32,6 +32,20 @@ class HealthConnectModule(
     }
 
     @ReactMethod
+    fun requestPermissions(promise: Promise) {
+        if (HealthConnectClient.getSdkStatus(reactContext) != HealthConnectClient.SDK_AVAILABLE) {
+            promise.reject("HEALTH_UNAVAILABLE", "Health Connect 설치 또는 업데이트가 필요합니다.")
+            return
+        }
+        val activity = reactContext.currentActivity as? MainActivity
+        if (activity == null) {
+            promise.reject("ACTIVITY_MISSING", "앱을 열고 다시 시도해 주세요.")
+            return
+        }
+        activity.runOnUiThread { activity.requestHealthPermissions(promise) }
+    }
+
+    @ReactMethod
     fun getHealthData(promise: Promise) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -184,8 +198,6 @@ class HealthConnectModule(
                 result.putString("latestSleepStartTime", latestSleepStartTime?.toString())
                 result.putString("latestSleepEndTime", latestSleepEndTime?.toString())
                 result.putArray("sleepSessions", sleepSessions)
-
-                Log.d("HEALTH_DATA", result.toString())
 
                 promise.resolve(result)
             } catch (e: Exception) {

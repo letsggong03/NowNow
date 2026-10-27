@@ -11,6 +11,7 @@ import {
 } from '../constants/chatScript';
 import {
   getChatMessages,
+  clearDemoMessages,
   saveChatMessage,
 } from '../../../services/chatStorage';
 import { requestReply, type ChatTurn } from '../../../services/api/chatAi';
@@ -54,6 +55,7 @@ export const useChatDiary = () => {
   const [userStory, setUserStory] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState('');
   const [requestError, setRequestError] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -62,6 +64,38 @@ export const useChatDiary = () => {
   const queue = useRef<Message[]>([]);
   const saving = useRef(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const resetConversation = async () => {
+    if (lock.current || loading || saving.current) {
+      setRequestError('답변과 저장이 끝난 뒤 다시 초기화해 주세요.');
+      return;
+    }
+    lock.current = true;
+    setResetting(true);
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    try {
+      await clearDemoMessages();
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+      queue.current = [];
+      summaryCache.current = null;
+      solutionsCache.current = null;
+      if (active.current) {
+        setMessages([createMessage('bot', chatScript.greeting)]);
+        setInput('');
+        setUserStory([]);
+        setStage('initial');
+        setError('');
+        setSaveError('');
+        setRequestError('');
+      }
+    } catch {
+      if (active.current) setRequestError('대화를 지우지 못했어요. 다시 시도해 주세요.');
+    } finally {
+      lock.current = false;
+      if (active.current) setResetting(false);
+    }
+  };
   const later = (callback: () => void, delay: number) => {
     timers.current.push(
       setTimeout(() => {
@@ -309,6 +343,8 @@ export const useChatDiary = () => {
   };
 
   return {
+    resetting,
+    resetConversation,
     loading,
     sending,
     error,

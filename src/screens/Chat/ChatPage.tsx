@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Text,
   Pressable,
   KeyboardAvoidingView,
@@ -18,6 +19,7 @@ import ChatInput from './components/ChatInput';
 import MessageBubble from './components/MessageBubble';
 import { useChatDiary } from './hooks/useChatDiary';
 import { useAppTheme } from '../../theme/ThemeProvider';
+import { chatAiConfig } from '../../services/api/chatAiConfig';
 
 interface ChatPageProps {
   date?: string;
@@ -54,6 +56,8 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
     saveError,
     restore,
     retrySave,
+    resetting,
+    resetConversation,
   } = useChatDiary();
 
   useEffect(() => {
@@ -71,6 +75,17 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
       >
         <View style={[styles.chatPanel, { backgroundColor: theme.background }]}>
           <ChatHeader title={formatChatDate(date)} onBack={onBack} />
+          {chatAiConfig.demoMode === true && (
+            <Pressable accessibilityRole="button" disabled={loading || sending || resetting}
+              onPress={() => Alert.alert('대화 초기화',
+                '이 폰의 시연 대화와 AI 대화 문맥을 모두 지웁니다. 되돌릴 수 없습니다.',
+                [{text: '취소', style: 'cancel'},
+                  {text: '초기화', style: 'destructive', onPress: resetConversation}])}>
+              <Text style={[styles.statusAction, {color: theme.accent, textAlign: 'right'}]}>
+                {resetting ? '초기화 중…' : '대화 초기화'}
+              </Text>
+            </Pressable>
+          )}
 
           <ScrollView
             ref={scrollViewRef}
@@ -121,7 +136,7 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
             </Pressable>
           )}
           <ChatInput
-            disabled={loading || sending || !!error || !!saveError}
+            disabled={loading || sending || resetting || !!error || !!saveError}
             value={input}
             onChangeText={setInput}
             onSend={handleSend}

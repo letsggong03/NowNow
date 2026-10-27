@@ -21,6 +21,26 @@ beforeEach(() => {
   mockDisk = null;
 });
 
+test('reset waits for pending writes and remains empty after reopening', async () => {
+  const store = require('../src/services/chatStorage');
+  const pending = store.saveChatMessage('USER', '초기화 전');
+  await store.clearDemoMessages();
+  await pending;
+  jest.resetModules();
+  expect(await require('../src/services/chatStorage').getChatMessages()).toEqual([]);
+});
+
+test('failed reset preserves existing messages and permits retry', async () => {
+  const store = require('../src/services/chatStorage');
+  await store.saveChatMessage('USER', '유지할 기록');
+  const disk = require('@react-native-async-storage/async-storage').default;
+  disk.setItem.mockRejectedValueOnce(new Error('disk failure'));
+  await expect(store.clearDemoMessages()).rejects.toThrow('disk failure');
+  expect(await store.getChatMessages()).toHaveLength(1);
+  await store.clearDemoMessages();
+  expect(await store.getChatMessages()).toEqual([]);
+});
+
 test('demo saves concurrent messages on device, survives module restart and never calls backend', async () => {
   const store = require('../src/services/chatStorage');
   await Promise.all([

@@ -6,6 +6,15 @@ import type { ChatMessageRecord, ChatRole } from './api/chat';
 const DEMO_KEY = '@nownow/chatbot-demo/v1';
 let writes: Promise<unknown> = Promise.resolve();
 
+export async function clearDemoMessages(): Promise<void> {
+  if (chatAiConfig.demoMode !== true) {
+    throw new Error('서버 대화 삭제는 지원하지 않습니다.');
+  }
+  const task = writes.then(() => AsyncStorage.setItem(DEMO_KEY, '[]'));
+  writes = task.then(() => undefined, () => undefined);
+  await task;
+}
+
 async function readLocal(): Promise<ChatMessageRecord[]> {
   const raw = await AsyncStorage.getItem(DEMO_KEY);
   if (raw === null) return [];

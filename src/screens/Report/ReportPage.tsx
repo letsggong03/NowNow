@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {ScrollView, StyleSheet, NativeModules, View, Text} from 'react-native';
+import {ScrollView, StyleSheet, NativeModules, View, Text, Pressable} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {Activity, Footprints, HeartPulse, Moon} from 'lucide-react-native';
@@ -58,6 +58,32 @@ export default function ReportPage() {
 
   const [healthData, setHealthData] = useState<any>(null);
   const [healthStatus, setHealthStatus] = useState('건강 데이터 조회 중');
+  const [connecting, setConnecting] = useState(false);
+  const connectHealth = async () => {
+    if (connecting) return;
+    setConnecting(true);
+    try {
+      if (!HealthConnectModule?.requestPermissions) {
+        setHealthStatus('Health Connect 설치/앱 업데이트가 필요합니다.');
+        return;
+      }
+      const allowed = await HealthConnectModule.requestPermissions();
+      if (!allowed) {
+        setHealthStatus('건강 읽기 권한이 일부 허용되지 않았습니다. 연결 버튼에서 권한을 확인해 주세요.');
+        return;
+      }
+      const data = await HealthConnectModule.getHealthData();
+      setHealthData(data);
+      setHealthStatus(data.heartRateSamples?.length || data.latestSleepMinutes || data.stepsTotal
+        ? 'Health Connect 실제 조회 데이터 · 항목별 미측정 값은 - 표시'
+        : '권한 허용 · 데이터 없음. 삼성 헬스의 Health Connect 데이터 쓰기 설정을 확인해 주세요.');
+      if (chatAiConfig.demoMode !== true) await saveRawHealthData(data);
+    } catch {
+      setHealthStatus('건강 조회 실패 · Health Connect 설치/권한/삼성 헬스 연결을 확인해 주세요.');
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   useEffect(() => {
     const loadHealthData = async () => {
@@ -147,6 +173,12 @@ export default function ReportPage() {
         </View>
 
         <ReportHeader tab={tab} onChangeTab={setTab} />
+        {tab === 'daily' && <Pressable accessibilityRole="button" disabled={connecting}
+          onPress={connectHealth} style={{paddingVertical: 12}}>
+          <Text style={{color: theme.accent, fontWeight: '700'}}>
+            {connecting ? '건강 데이터 연결 중…' : 'Health Connect 연결 / 새로고침'}
+          </Text>
+        </Pressable>}
         <Text style={{color: theme.textMuted}}>
           {tab === 'daily' ? healthStatus : '주간 차트는 팀 원본의 화면 예시 데이터입니다. 실제 사용자 분석은 백엔드 서버 연결 필요.'}
         </Text>
