@@ -70,6 +70,97 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
         (사용자 · 건강 raw · 채팅 · 리포트 · 임베딩)
 ```
 
+## ⌚ 삼성헬스 · Health Connect 연동
+
+### 왜 Health Connect인가
+- 처음에는 **삼성헬스 SDK**로 갤럭시워치 데이터를 바로 읽으려고 했어요. 그런데 삼성헬스 SDK는 **파트너 승인**을 받아야 데이터를 읽을 수 있고, 프로젝트 기간 안에 승인이 나지 않았어요.
+- 그래서 구글과 삼성이 함께 만든 Android 건강 데이터 플랫폼인 **Health Connect**를 쓰기로 했어요. 삼성헬스가 Health Connect로 데이터를 동기화해 주기 때문에, 앱은 **Health Connect만 읽으면** 갤럭시워치 데이터를 받을 수 있어요.
+- 덕분에 앱이 특정 기기에 묶이지 않아요. Health Connect에 데이터를 쓰는 다른 앱이나 기기(Fitbit, Google Fit 등)의 데이터도 같은 코드로 읽혀요.
+
+### 데이터 흐름
+
+```
+ Galaxy Watch ──(블루투스)──▶ Samsung Health 앱 ──(동기화)──▶ Health Connect
+                                                                │
+                                         HealthConnectModule.getHealthData()
+                                          (Kotlin · Coroutine IO · Promise)
+                                                                │
+                                                                ▼
+                                    ReportPage.tsx ── 실시간 리포트 카드·차트 표시
+                                                                │
+                                                                ▼
+                                              Supabase raw 테이블 upsert
+```
+
+1. 갤럭시워치가 심박수, 혈중산소, 혈압, 수면, 걸음 수를 측정해서 **삼성헬스 앱**에 보내요.
+2. 삼성헬스가 허용된 데이터 종류를 **Health Connect**에 동기화해요.
+3. 리포트 화면이 열리면 JS에서 `NativeModules.HealthConnectModule.getHealthData()`를 호출해요.
+4. Kotlin 모듈이 Health Connect에서 데이터를 읽어서 JS 객체(`WritableMap`)로 돌려줘요.
+5. 앱은 화면에 표시하고, 심박수·혈압·산소포화도 샘플은 Supabase raw 테이블에 저장해요.
+
+### 읽는 데이터
+
+| 데이터 | Health Connect 레코드 | 권한 | 조회 범위 | JS로 넘기는 값 |
+|---|---|---|---|---|
+| 걸음 수 | `StepsRecord` (`COUNT_TOTAL` 집계) | `READ_STEPS` | 오늘 0시 ~ 지금 | `stepsTotal` |
+| 심박수 | `HeartRateRecord` | `READ_HEART_RATE` | 오늘 0시 ~ 지금 | `latestHeartRate`, `latestHeartRateTime`, `heartRateSamples[{time, bpm}]` |
+| 산소포화도 | `OxygenSaturationRecord` | `READ_OXYGEN_SATURATION` | 오늘 0시 ~ 지금 | `latestOxygen`, `latestOxygenTime`, `oxygenSamples[{time, percentage}]` |
+| 혈압 | `BloodPressureRecord` | `READ_BLOOD_PRESSURE` | 오늘 0시 ~ 지금 | `latestSystolic`, `latestDiastolic`, `latestBloodPressureTime`, `bloodPressureSamples[{time, systolic, diastolic}]` |
+| 수면 | `SleepSessionRecord` | `READ_SLEEP` | 최근 24시간 | `latestSleepMinutes`, `latestSleepStartTime`, `latestSleepEndTime`, `sleepSessions[{startTime, endTime, hours}]` |
+
+- 시간 값은 모두 ISO-8601 문자열(`Instant.toString()`)이에요.
+- 심박수는 레코드 하나에 샘플이 여러 개 들어 있어서, 모든 샘플을 펼친 뒤 가장 늦은 시각의 값을 `latest`로 골라요.
+- 수면은 자정을 넘기기 때문에 "오늘"이 아니라 **최근 24시간** 기준으로 읽고, 가장 늦게 끝난 세션을 `latest`로 써요.
+- 데이터가 없으면 `latest*` 값은 `0`, 시각은 `null`, 목록은 빈 배열이에요.
+
+### Supabase 저장
+
+| 테이블 | 컬럼 | 충돌 기준 |
+|---|---|---|
+| `heart_rate_records` | `user_id`, `measured_at`, `bpm` | `user_id, measured_at` |
+| `blood_pressure_records` | `user_id`, `measured_at`, `systolic`, `diastolic` | `user_id, measured_at` |
+| `oxygen_records` | `user_id`, `measured_at`, `percentage` | `user_id, measured_at` |
+
+- 리포트 화면을 열 때마다 오늘 데이터를 다시 읽어요. `upsert`로 저장해서 같은 측정값이 중복으로 쌓이지 않아요.
+- 로그인한 사용자가 없으면 저장하지 않아요.
+- 걸음 수와 수면은 현재 화면에만 표시하고 DB에는 저장하지 않아요.
+
+### 네이티브 모듈 구성
+
+| 파일 | 역할 |
+|---|---|
+| [`HealthConnectModule.kt`](android/app/src/main/java/com/mibandtest/HealthConnectModule.kt) | `getHealthData()` `@ReactMethod`. `Dispatchers.IO` 코루틴에서 읽고 `Promise`로 결과를 돌려줘요. 실패하면 `HEALTH_ERROR`로 reject 해요. |
+| [`HealthConnectPackage.kt`](android/app/src/main/java/com/mibandtest/HealthConnectPackage.kt) | 모듈을 `ReactPackage`로 묶어요. |
+| [`MainApplication.kt`](android/app/src/main/java/com/mibandtest/MainApplication.kt) | `add(HealthConnectPackage())`로 패키지를 등록해요. |
+| [`AndroidManifest.xml`](android/app/src/main/AndroidManifest.xml) | 5가지 `android.permission.health.READ_*` 권한을 선언하고, Health Connect 권한 화면에서 앱이 보이도록 `VIEW_PERMISSION_USAGE` activity-alias를 등록해요. |
+| [`android/app/build.gradle`](android/app/build.gradle) | `androidx.health.connect:connect-client:1.1.0` 의존성 (minSdk 26, compileSdk 36) |
+| [`ReportPage.tsx`](src/screens/Report/ReportPage.tsx) | 모듈을 호출해 카드·차트에 표시하고 Supabase에 저장해요. |
+| [`mockHealthData.ts`](src/services/health/mockHealthData.ts) | Health Connect를 쓸 수 없는 개발 환경용 목업 데이터 |
+
+### 에뮬레이터·개발 환경 목업
+- 모듈이 없거나(iOS 등) Health Connect 읽기에 실패하면(에뮬레이터, 권한 없음 등) **개발 빌드(`__DEV__`)에서만** 목업 데이터로 화면을 채워요.
+- 목업은 0시부터 현재 시각까지 시간별 심박수, 3시간마다 혈압, 2시간마다 산소포화도, 6시간 52분 수면, 6,342걸음을 만들어요.
+- 목업 데이터는 **Supabase에 저장하지 않아요.** 릴리스 빌드에서는 목업을 쓰지 않아요.
+
+### 실기기 연동 설정 (갤럭시워치 기준)
+
+1. **Health Connect 확인**: Android 14 이상은 시스템에 내장돼 있어요(설정 → 보안 및 개인정보 보호 → 개인정보 보호 → Health Connect). Android 13 이하는 Play 스토어에서 Health Connect 앱을 설치해요.
+2. **갤럭시워치 ↔ 삼성헬스 연결**: Galaxy Wearable 앱으로 워치를 페어링하고, 삼성헬스에 워치 데이터가 들어오는지 확인해요.
+3. **삼성헬스 → Health Connect 동기화 켜기**: 삼성헬스 → 설정 → Health Connect에서 걸음 수, 심박수, 혈중 산소, 혈압, 수면 쓰기를 허용해요.
+4. **NowNow 읽기 권한 허용**: Health Connect → 앱 권한 → NowNow에서 5가지 데이터 읽기를 모두 허용해요.
+5. **측정 데이터 준비**
+   - 심박수·걸음 수·수면: 워치를 차고 있으면 자동으로 기록돼요(수면은 워치를 차고 자야 해요).
+   - 혈중산소: 워치에서 직접 측정하거나 삼성헬스에서 자동 측정을 켜요.
+   - 혈압: 갤럭시워치 혈압 측정은 **Samsung Health Monitor 앱**에서 커프 혈압계로 보정한 뒤에 쓸 수 있어요.
+6. 앱의 **리포트 → 실시간 리포트** 탭을 열면 데이터가 표시돼요. Logcat에서 `HEALTH_DATA` / `HEALTH_ERROR` 태그로 읽은 값과 오류를 확인할 수 있어요.
+
+### 주의할 점·한계
+- **앱 안에서 권한을 요청하는 화면이 아직 없어요.** 위 4번처럼 Health Connect 설정에서 직접 허용해야 하고, 권한이 없으면 읽기가 실패해요(개발 빌드에서는 목업으로 대체).
+- Health Connect 설치·지원 여부(`getSdkStatus`)를 따로 확인하지 않아요. 설치되지 않은 기기에서는 읽기가 실패해요.
+- 삼성헬스 → Health Connect 동기화는 실시간이 아니에요. 워치에서 방금 측정한 값이 늦게 보일 수 있어요.
+- 갤럭시워치의 **ECG 원시 데이터와 HRV(RR 간격)는 Health Connect로 넘어오지 않아요.** 그래서 스트레스 지수는 심박수 표준편차 기반 pseudo-HRV로 계산해요.
+- Health Connect는 Android 전용이에요. iOS에서는 건강 데이터가 표시되지 않아요(HealthKit 미연동).
+
 ## 👥 팀 구성
 
 | 파트 | 담당 |
@@ -146,7 +237,7 @@ cd ios && bundle exec pod install && cd ..
 npm run ios
 ```
 
-> 건강 데이터는 **Android + Health Connect** 환경에서만 표시돼요.
+> 건강 데이터는 **Android + Health Connect** 환경에서만 실제 값이 표시돼요. 기기 설정은 [실기기 연동 설정](#실기기-연동-설정-갤럭시워치-기준)을 참고하세요. 에뮬레이터 개발 빌드에서는 목업 데이터가 표시돼요.
 
 ## 📁 폴더 구조
 
@@ -155,7 +246,7 @@ src
 ├─ navigation/     # Root(세션 분기) · Auth · Tab 네비게이터
 ├─ screens/        # 화면별 폴더 (컴포넌트·훅·상수·타입을 화면 안에 둠)
 │   ├─ Home/ Chat/ Report/ Profile/ Login/ Community/
-├─ services/       # supabase 클라이언트, API
+├─ services/       # supabase 클라이언트, API, health/ (에뮬레이터용 목업)
 ├─ theme/          # ThemeProvider (라이트/다크), colors, spacing
 └─ assets/
 android/app/src/main/java/com/mibandtest/
@@ -165,4 +256,5 @@ android/app/src/main/java/com/mibandtest/
 ## 🔭 앞으로 해볼 것
 
 - PMS(월경 전 증후군)로 인한 감정 기복 케어용 챗봇 페르소나 확장, 민감 정보 보안 강화
+- 앱 안에서 Health Connect 권한 요청과 설치 여부 확인, 걸음 수·수면 데이터 DB 저장
 - iOS HealthKit 연동
