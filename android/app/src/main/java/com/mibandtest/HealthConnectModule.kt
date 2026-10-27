@@ -46,6 +46,42 @@ class HealthConnectModule(
     }
 
     @ReactMethod
+    fun getStepsStatistics(period: String, promise: Promise) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                require(period in listOf("day", "week", "month"))
+                val client = HealthConnectClient.getOrCreate(reactContext)
+                val zone = ZoneId.of("Asia/Seoul")
+                val now = Instant.now()
+                val today = now.atZone(zone).toLocalDate()
+                val startDate = when (period) {
+                    "week" -> today.minusDays(6)
+                    "month" -> today.withDayOfMonth(1)
+                    else -> today
+                }
+                val size = if (period == "day") 24 else java.time.temporal.ChronoUnit.DAYS.between(startDate, today).toInt() + 1
+                val points = Arguments.createArray()
+                for (index in 0 until size) {
+                    val start = if (period == "day") today.atStartOfDay(zone).plusHours(index.toLong()).toInstant()
+                        else startDate.plusDays(index.toLong()).atStartOfDay(zone).toInstant()
+                    val end = (if (period == "day") start.plus(1, ChronoUnit.HOURS) else start.plus(1, ChronoUnit.DAYS)).let { if (it.isAfter(now)) now else it }
+                    val point = Arguments.createMap()
+                    point.putString("label", if (period == "day") index.toString().padStart(2, '0') else start.atZone(zone).toLocalDate().toString().substring(5))
+                    if (start.isBefore(now)) {
+                        val aggregate = client.aggregate(AggregateRequest(metrics = setOf(StepsRecord.COUNT_TOTAL), timeRangeFilter = TimeRangeFilter.between(start, end)))
+                        val count = aggregate[StepsRecord.COUNT_TOTAL]
+                        if (count == null) point.putNull("count") else point.putDouble("count", count.toDouble())
+                    } else point.putNull("count")
+                    points.pushMap(point)
+                }
+                promise.resolve(points)
+            } catch (e: Exception) {
+                promise.reject("STEPS_QUERY_FAILED", "걸음 기록 조회 권한과 연결 상태를 확인해 주세요.", e)
+            }
+        }
+    }
+
+    @ReactMethod
     fun getHealthData(promise: Promise) {
         CoroutineScope(Dispatchers.IO).launch {
             try {

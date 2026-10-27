@@ -6,6 +6,7 @@ import {Activity, Footprints, HeartPulse, Moon} from 'lucide-react-native';
 import HealthCard from './components/HealthCard';
 import ReportHeader from './components/ReportHeader';
 import StressCauseCard from './components/StressCauseCard';
+import StepsStatistics from './components/StepsStatistics';
 import TrendChart from './components/TrendChart';
 import WeeklyReport from './components/WeeklyReport';
 import {metricConfig} from './constants/reportData';
@@ -52,6 +53,7 @@ export default function ReportPage() {
     daily,
     recommendation,
     reportStatus,
+    causeStatus,
     stressCauses,
   } = useReport();
 
@@ -184,6 +186,7 @@ export default function ReportPage() {
       </View>
 
       <TrendChart selectedMetric={selectedMetric} healthData={healthData} />
+      <StepsStatistics refreshKey={healthData} />
       <Text style={{color: theme.textMuted}}>{reportStatus}</Text>
       <Text style={{color: theme.text}}>오늘 스트레스 지표: {daily?.finalDailyStressScore ?? '데이터 없음'}{daily?.finalDailyStressScore != null ? ' / 100' : ''}</Text>
       {!!daily?.missing?.length && <Text style={{color: theme.textMuted}}>부족한 자료: {daily.missing.join(', ')}</Text>}
@@ -196,7 +199,7 @@ export default function ReportPage() {
         onPeriodChange={setStressPeriod}
       />
 
-      {stressCauses.length === 0 && <Text style={{color: theme.textMuted}}>저장된 요약 키워드가 없습니다. 채팅에서 하루 요약을 저장하면 원인 통계에 반영됩니다.</Text>}
+      <Text style={{color: theme.textMuted}}>{causeStatus}</Text>
       </>
     ) : (
       <WeeklyReport />

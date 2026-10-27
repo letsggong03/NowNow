@@ -82,6 +82,7 @@ export async function saveChatMessage(
 }
 
 export async function persistSummary(summary: string, keywords: string[]): Promise<string> {
+  await (await import('./reportRecords')).recordReportSummary(summary, keywords);
   if (chatAiConfig.demoMode !== true) {
     const records = await backend.getChatMessages();
     const last = records[records.length - 1];

@@ -58,10 +58,11 @@ export default function StressCauseCard({
       <Text style={[styles.count, {color: theme.text}]}>
         {totalCount}
         <Text style={[styles.countUnit, {color: theme.textMuted}]}>
-          건의 스트레스 기록
+          회의 키워드 언급
         </Text>
       </Text>
 
+      {causes.length === 0 && <Text style={{color: theme.textMuted, marginTop: 12}}>아직 표시할 원인 키워드가 없어요. 건강 수치만으로 원인을 판단하지 않아요.</Text>}
       <View style={styles.causes}>
         {causes.map((item, index) => (
           <View key={item.cause}>
