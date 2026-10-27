@@ -1,7 +1,15 @@
 import { supabase } from "../supabase";
+import { getMe } from "./auth";
 
-// 회원가입(SignupPage)에서 저장하는 테이블/컬럼과 동일하게 맞춘다.
+// 백엔드(/api/auth/me)를 먼저 쓰고, 서버에 못 붙으면 Supabase에서 직접 읽는다.
 export async function getProfile() {
+  try {
+    const me = await getMe();
+    return me.nickname ?? null;
+  } catch (apiError) {
+    console.log("[getProfile] API 실패, Supabase로 폴백:", apiError);
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
