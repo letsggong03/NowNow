@@ -15,7 +15,7 @@ import type {ReportTab} from './types';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
 import {supabase} from '../../services/supabase';
-import {createMockHealthData} from '../../services/health/mockHealthData';
+import {chatAiConfig} from '../../services/api/chatAiConfig';
 
 const {HealthConnectModule} = NativeModules;
 
@@ -57,24 +57,26 @@ export default function ReportPage() {
   } = useReport();
 
   const [healthData, setHealthData] = useState<any>(null);
+  const [healthStatus, setHealthStatus] = useState('건강 데이터 조회 중');
 
   useEffect(() => {
     const loadHealthData = async () => {
       // 에뮬레이터처럼 Health Connect를 쓸 수 없는 개발 환경에서는 목업 데이터로 UI를 확인한다.
       if (!HealthConnectModule) {
-        if (__DEV__) setHealthData(createMockHealthData());
+        setHealthStatus('Health Connect 연결 필요 · 건강 데이터 없음');
         return;
       }
 
       try {
         const data = await HealthConnectModule.getHealthData();
-        console.log('Health data:', data);
-
         setHealthData(data);
-        await saveRawHealthData(data);
+        setHealthStatus(data.heartRateSamples?.length || data.latestSleepMinutes || data.stepsTotal
+          ? 'Health Connect 실제 조회 데이터 · 항목별 미측정 값은 - 표시'
+          : '조회 완료 · 저장된 건강 데이터 없음');
+        if (chatAiConfig.demoMode !== true) await saveRawHealthData(data);
       } catch (e) {
         console.log('HealthConnect 에러:', e);
-        if (__DEV__) setHealthData(createMockHealthData());
+        setHealthStatus('건강 데이터 조회 실패 · Health Connect 권한/연결 확인 필요');
       }
     };
 
@@ -145,6 +147,12 @@ export default function ReportPage() {
         </View>
 
         <ReportHeader tab={tab} onChangeTab={setTab} />
+        <Text style={{color: theme.textMuted}}>
+          {tab === 'daily' ? healthStatus : '주간 차트는 팀 원본의 화면 예시 데이터입니다. 실제 사용자 분석은 백엔드 서버 연결 필요.'}
+        </Text>
+        {chatAiConfig.demoMode === true && (
+          <Text style={{color: theme.textMuted}}>로그인 생략으로 Supabase 계정 저장은 사용하지 않습니다.</Text>
+        )}
 
     {tab === 'daily' ? (
     <>
@@ -166,7 +174,7 @@ export default function ReportPage() {
     <View style={styles.healthGrid}>
       <HealthCard
         title={metricConfig.heartRate.label}
-        value={formatNumber(healthData?.latestHeartRate)}
+        value={healthData?.latestHeartRate > 0 ? formatNumber(healthData.latestHeartRate) : '-'}
         unit={metricConfig.heartRate.unit}
         Icon={HeartPulse}
         selected={selectedMetric === 'heartRate'}
@@ -190,6 +198,7 @@ export default function ReportPage() {
       </View>
 
       <TrendChart selectedMetric={selectedMetric} healthData={healthData} />
+      <Text style={{color: theme.textMuted}}>아래 스트레스 원인·요약은 팀 원본의 화면 예시입니다. 실제 기록 분석은 백엔드 서버 연결 필요.</Text>
 
       <StressCauseCard
         causes={stressCauses}

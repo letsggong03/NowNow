@@ -1,5 +1,5 @@
 import React from 'react';
-import {ScrollView, StyleSheet, Text} from 'react-native';
+import {Alert, ScrollView, StyleSheet, Text} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {
@@ -14,6 +14,7 @@ import ProfileHeader from './components/ProfileHeader';
 import SettingsSection from './components/SettingsSection';
 import {useThemePreference} from './hooks/useThemePreference';
 import {supabase} from '../../services/supabase';
+import {chatAiConfig} from '../../services/api/chatAiConfig';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
 
@@ -23,6 +24,10 @@ export default function MyPage() {
 
   // 세션이 사라지면 RootNavigator가 로그인 화면으로 전환한다.
   const handleLogout = () => {
+    if (chatAiConfig.demoMode === true) {
+      Alert.alert('시연 모드', '현재 로그인 없이 사용 중입니다. 팀 계정 로그인·서버 저장은 연결 후 사용할 수 있습니다.');
+      return;
+    }
     supabase.auth.signOut();
   };
 

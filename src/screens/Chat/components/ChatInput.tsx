@@ -1,20 +1,27 @@
-import React, {useRef} from 'react';
-import {Animated, Pressable, StyleSheet, TextInput, View} from 'react-native';
-import {Send} from 'lucide-react-native';
+import React, { useRef } from 'react';
+import { Animated, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Send } from 'lucide-react-native';
 
-import {useAppTheme} from '../../../theme/ThemeProvider';
+import { useAppTheme } from '../../../theme/ThemeProvider';
 
 interface ChatInputProps {
   value: string;
+  disabled?: boolean;
   onChangeText: (value: string) => void;
   onSend: () => void;
 }
 
-export default function ChatInput({value, onChangeText, onSend}: ChatInputProps) {
-  const {theme} = useAppTheme();
+export default function ChatInput({
+  value,
+  onChangeText,
+  onSend,
+  disabled = false,
+}: ChatInputProps) {
+  const { theme } = useAppTheme();
   const sendScale = useRef(new Animated.Value(1)).current;
 
   const handleSendPress = () => {
+    if (disabled) return;
     Animated.sequence([
       Animated.timing(sendScale, {
         duration: 70,
@@ -32,8 +39,10 @@ export default function ChatInput({value, onChangeText, onSend}: ChatInputProps)
   };
 
   return (
-    <View style={[styles.inputArea, {backgroundColor: theme.background}]}>
+    <View style={[styles.inputArea, { backgroundColor: theme.background }]}>
       <TextInput
+        editable={!disabled}
+        maxLength={2000}
         value={value}
         onChangeText={onChangeText}
         onSubmitEditing={onSend}
@@ -42,19 +51,24 @@ export default function ChatInput({value, onChangeText, onSend}: ChatInputProps)
         returnKeyType="send"
         style={[
           styles.input,
-          {backgroundColor: theme.input, color: theme.text},
+          { backgroundColor: theme.input, color: theme.text },
         ]}
       />
       <Pressable
+        disabled={disabled || !value.trim()}
+        accessibilityLabel="메시지 보내기"
         onPress={handleSendPress}
-        style={({pressed}) => [
-          pressed && styles.pressedSendButton,
-        ]}>
+        style={({ pressed }) => [pressed && styles.pressedSendButton]}
+      >
         <Animated.View
           style={[
             styles.sendButton,
-            {backgroundColor: theme.accent, transform: [{scale: sendScale}]},
-          ]}>
+            {
+              backgroundColor: theme.accent,
+              transform: [{ scale: sendScale }],
+            },
+          ]}
+        >
           <Send color={theme.accentText} size={20} />
         </Animated.View>
       </Pressable>

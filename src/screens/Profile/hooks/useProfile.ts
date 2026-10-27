@@ -13,6 +13,8 @@ export const useProfile = () => {
       if (mounted && nickname) {
         setName(nickname);
       }
+    }).catch(() => {
+      // 연결 오류에도 기본 프로필로 화면을 유지한다.
     });
 
     return () => {
