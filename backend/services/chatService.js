@@ -53,14 +53,15 @@ async function deleteMessage(chat_id, user_id) {
   return true;
 }
 
-async function createSummary({ chat_id, user_id, summary }) {
+async function createSummary({ chat_id, user_id, summary, keywords = [] }) {
   const { data, error } = await supabase
     .from("chat_summaries")
     .insert([
       {
         chat_id,
         user_id,
-        summary
+        summary,
+        keywords
       }
     ])
     .select()

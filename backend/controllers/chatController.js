@@ -78,7 +78,7 @@ async function deleteMessage(req, res) {
 
 async function createSummary(req, res) {
   try {
-    const { chat_id, user_id, summary } = req.body;
+    const { chat_id, user_id, summary, keywords = [] } = req.body;
 
     if (!chat_id || !user_id || !summary) {
       return res.status(400).json({
@@ -86,10 +86,22 @@ async function createSummary(req, res) {
       });
     }
 
+    // 리포트 스트레스 원인 통계에 쓰는 감정·원인 키워드
+    if (
+      !Array.isArray(keywords) ||
+      keywords.length > 10 ||
+      keywords.some(word => typeof word !== "string")
+    ) {
+      return res.status(400).json({
+        message: "keywords는 문자열 배열(최대 10개)이어야 합니다."
+      });
+    }
+
     const data = await chatService.createSummary({
       chat_id,
       user_id,
-      summary
+      summary,
+      keywords
     });
 
     res.status(201).json({

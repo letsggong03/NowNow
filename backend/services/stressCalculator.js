@@ -5,11 +5,11 @@
 // DailyStress          = 0.8 × DailyRealtimeStress + 0.1 × BPScore + 0.1 × StepScore
 // FinalDailyStressScore = DailyStress × SleepFactor              (최대 100)
 
+const { HOUR_MS, kstDateOf, toKstIso, kstDayRange } = require("../utils/kstDate");
+
 const HIGH_STRESS_THRESHOLD = 70;
 // 표준편차를 의미 있게 구하려면 한 시간에 샘플이 이 개수 이상 있어야 한다.
 const MIN_SAMPLES_PER_HOUR = 3;
-const HOUR_MS = 60 * 60 * 1000;
-const KST_OFFSET_MS = 9 * HOUR_MS;
 
 // 표의 구간이 정수로 끊겨 있어 소수 값은 위쪽 구간 경계 기준으로 나눈다.
 // 60bpm 미만은 표에 없어 0점(60~80 구간)으로 본다.
@@ -60,22 +60,6 @@ const mean = values => values.reduce((sum, v) => sum + v, 0) / values.length;
 function stdDev(values) {
   const avg = mean(values);
   return Math.sqrt(mean(values.map(v => (v - avg) ** 2)));
-}
-
-const toKstIso = ms =>
-  new Date(ms + KST_OFFSET_MS).toISOString().slice(0, 19) + "+09:00";
-
-// "2026-10-20" → 한국 시간 그날 0시 ~ 다음날 0시 (ISO 문자열)
-function kstDayRange(date) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  const startMs = Date.parse(`${date}T00:00:00+09:00`);
-  if (Number.isNaN(startMs) || toKstIso(startMs).slice(0, 10) !== date) {
-    return null;
-  }
-  return {
-    start: new Date(startMs).toISOString(),
-    end: new Date(startMs + 24 * HOUR_MS).toISOString()
-  };
 }
 
 // 수면 세션들의 총 수면 시간(분). 워치·폰이 같은 수면을 각각 기록해 겹칠 수 있어
@@ -223,6 +207,52 @@ function calculateDailyStress({
   };
 }
 
+function groupByDate(rows, timeKey) {
+  const groups = new Map();
+
+  for (const row of rows) {
+    const date = kstDateOf(row[timeKey]);
+    if (!groups.has(date)) groups.set(date, []);
+    groups.get(date).push(row);
+  }
+
+  return groups;
+}
+
+/**
+ * 여러 날의 원본 데이터를 한국 시간 날짜별로 나눠 하루 스트레스를 계산한다.
+ * 수면은 끝난 날짜, 걸음 수는 시작 날짜 기준.
+ * @param {string[]} dates
+ * @param {{heartRates: object[], bloodPressures: object[], steps: object[], sleeps: object[]}} data
+ * @param {number|null} sleepMinutesOverride  주면 모든 날에 이 수면 시간을 쓴다
+ */
+function calculateByDate(dates, data, sleepMinutesOverride = null) {
+  const heartRates = groupByDate(data.heartRates, "measured_at");
+  const bloodPressures = groupByDate(data.bloodPressures, "measured_at");
+  const steps = groupByDate(data.steps, "start_time");
+  const sleeps = groupByDate(data.sleeps, "end_time");
+
+  return dates.map(date => {
+    const daySteps = steps.get(date);
+
+    return {
+      date,
+      ...calculateDailyStress({
+        heartRates: heartRates.get(date) ?? [],
+        systolics: (bloodPressures.get(date) ?? [])
+          .map(row => row.systolic)
+          .filter(value => typeof value === "number"),
+        // 걸음 수 기록이 하나도 없으면 null (0보와 구분)
+        totalSteps: daySteps
+          ? daySteps.reduce((sum, row) => sum + (row.count || 0), 0)
+          : null,
+        sleepMinutes:
+          sleepMinutesOverride ?? sleepMinutesFromSessions(sleeps.get(date) ?? [])
+      })
+    };
+  });
+}
+
 module.exports = {
   HIGH_STRESS_THRESHOLD,
   MIN_SAMPLES_PER_HOUR,
@@ -236,5 +266,6 @@ module.exports = {
   hourlyStress,
   dailyRealtimeStress,
   calculateDailyStress,
+  calculateByDate,
   kstDayRange
 };
