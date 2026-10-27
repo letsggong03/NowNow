@@ -133,6 +133,38 @@ export default function ReportPage() {
       );
       logSaveError('oxygen_records', error);
     }
+
+    // Health Connect는 걸음 수를 오늘 합계로만 준다(기기 간 중복 제거된 값).
+    // 하루 한 행(오늘 0시~내일 0시)으로 두고 다시 열 때마다 합계를 덮어쓴다.
+    if (typeof data.stepsTotal === 'number') {
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const {error} = await supabase.from('steps_records').upsert(
+        {
+          user_id: userId,
+          start_time: dayStart.toISOString(),
+          end_time: dayEnd.toISOString(),
+          count: data.stepsTotal,
+        },
+        {onConflict: 'user_id,start_time,end_time'},
+      );
+      logSaveError('steps_records', error);
+    }
+
+    if (data.sleepSessions?.length > 0) {
+      const {error} = await supabase.from('sleep_records').upsert(
+        data.sleepSessions.map((item: any) => ({
+          user_id: userId,
+          start_time: item.startTime,
+          end_time: item.endTime,
+        })),
+        {onConflict: 'user_id,start_time,end_time'},
+      );
+      logSaveError('sleep_records', error);
+    }
   };
 
   return (
