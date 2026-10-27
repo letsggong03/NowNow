@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import ChatbotDemo from '../screens/Chat/ChatbotDemo';
-import { chatAiConfig } from '../services/api/chatAiConfig';
 import { ensureProfile } from '../services/api/profile';
 import AuthNavigator from './AuthNavigator';
 import TabNavigator from './TabNavigator';
 import { supabase } from '../services/supabase';
-import { View, ActivityIndicator, StyleSheet, Pressable, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
 
 function AuthenticatedRoot() {
@@ -65,19 +62,5 @@ const styles = StyleSheet.create({
 });
 
 export default function RootNavigator() {
-  const [guest, setGuest] = useState(false);
-  const {theme} = useAppTheme();
-  if (chatAiConfig.demoMode !== true) return <AuthenticatedRoot />;
-  if (guest) return <ChatbotDemo onLogin={() => setGuest(false)} />;
-  return <View style={{flex: 1, backgroundColor: theme.background}}>
-    <SafeAreaView edges={['top']}>
-      <Text style={{color: theme.text, textAlign: 'center', padding: 8}}>
-        건강 상담 시연 · 대화는 폰에 보관 · 로그인 시 서버 동기화 시도
-      </Text>
-      <Pressable accessibilityRole="button" onPress={() => setGuest(true)}>
-        <Text style={{color: theme.accent, textAlign: 'center', padding: 10}}>로그인 없이 시연하기</Text>
-      </Pressable>
-    </SafeAreaView>
-    <AuthenticatedRoot />
-  </View>;
+  return <AuthenticatedRoot />;
 }

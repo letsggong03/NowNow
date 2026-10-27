@@ -13,7 +13,6 @@ import {useReport} from './hooks/useReport';
 import type {ReportTab} from './types';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
-import {chatAiConfig} from '../../services/api/chatAiConfig';
 import {syncHealth} from '../../services/health/sync';
 
 const {HealthConnectModule} = NativeModules;
@@ -140,9 +139,6 @@ export default function ReportPage() {
         <Text style={{color: theme.textMuted}}>
           {tab === 'daily' ? healthStatus : '주간 리포트 · 본인 계정에 저장된 실제 기록'}
         </Text>
-        {chatAiConfig.demoMode === true && (
-          <Text style={{color: theme.textMuted}}>로그인한 본인 계정으로 건강 자료 동기화 · 실패 시 상태 표시</Text>
-        )}
 
     {tab === 'daily' ? (
     <>

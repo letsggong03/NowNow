@@ -67,7 +67,7 @@ export default function MessageBubble({
             styles.messageText,
             {color: theme.text},
           ]}>
-          {message.content}
+          {isUser ? message.content : message.content.replace(/\[(?:근거ID[^\]]*|(?:heart|steps|sleep|stress|bp):[^\]]*)\]/g, '').replace(/\*\*/g, '').trim()}
         </Text>
 
         {message.buttons && (
