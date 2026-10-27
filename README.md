@@ -164,6 +164,5 @@ android/app/src/main/java/com/mibandtest/
 
 ## 🔭 앞으로 해볼 것
 
-- Arduino와 AD8232 ECG 센서로 실제 HRV를 측정해서 스트레스 지수를 더 정확하게 만들기
 - PMS(월경 전 증후군)로 인한 감정 기복 케어용 챗봇 페르소나 확장, 민감 정보 보안 강화
 - iOS HealthKit 연동
