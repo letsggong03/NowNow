@@ -11,7 +11,6 @@ import {
   LayoutChangeEvent,
   StyleSheet,
   Text,
-  type ViewStyle,
   View,
 } from 'react-native';
 
@@ -19,6 +18,8 @@ import ChatPage from '../screens/Chat/ChatPage';
 import HomePage from '../screens/Home/HomePage';
 import MyPage from '../screens/Profile/MyPage';
 import ReportPage from '../screens/Report/ReportPage';
+import {TAB_BAR} from '../theme/layout';
+import {shadows} from '../theme/shadows';
 import {useAppTheme} from '../theme/ThemeProvider';
 
 type TabKey = 'Home' | 'Chat' | 'Report' | 'Settings';
@@ -74,7 +75,7 @@ export default function TabNavigator() {
 
   const handleTabBarLayout = (event: LayoutChangeEvent) => {
     const width = event.nativeEvent.layout.width;
-    setTabWidth((width - 16) / tabs.length);
+    setTabWidth((width - TAB_BAR.padding * 2) / tabs.length);
   };
 
   return (
@@ -92,7 +93,7 @@ export default function TabNavigator() {
               styles.activeIndicator,
               {
                 backgroundColor: theme.navIndicator,
-                left: 8 + tabWidth / 2 - 29,
+                left: TAB_BAR.padding + tabWidth / 2 - TAB_BAR.indicatorWidth / 2,
                 transform: [{translateX: indicatorAnim}],
               },
             ]}
@@ -131,13 +132,6 @@ export default function TabNavigator() {
   );
 }
 
-const floatingShadow: ViewStyle = {
-  shadowColor: '#000000',
-  shadowOffset: {width: 0, height: 6},
-  shadowOpacity: 0.12,
-  shadowRadius: 14,
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -146,26 +140,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabBar: {
-    ...floatingShadow,
+    ...shadows.floating,
     alignItems: 'center',
-    borderRadius: 34,
-    bottom: 16,
-    elevation: 8,
+    borderRadius: TAB_BAR.height / 2,
+    bottom: TAB_BAR.bottomOffset,
     flexDirection: 'row',
-    height: 70,
+    height: TAB_BAR.height,
     justifyContent: 'space-around',
-    left: 18,
-    paddingHorizontal: 8,
+    left: TAB_BAR.sideInset,
+    paddingHorizontal: TAB_BAR.padding,
     paddingVertical: 6,
     position: 'absolute',
-    right: 18,
+    right: TAB_BAR.sideInset,
   },
   activeIndicator: {
     borderRadius: 24,
-    height: 54,
+    height: TAB_BAR.height - TAB_BAR.padding * 2,
     position: 'absolute',
-    top: 8,
-    width: 58,
+    top: TAB_BAR.padding,
+    width: TAB_BAR.indicatorWidth,
   },
   tabItem: {
     alignItems: 'center',

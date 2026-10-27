@@ -2,11 +2,11 @@ import React, {useEffect, useRef} from 'react';
 import {Animated, Pressable, StyleSheet, Text, View} from 'react-native';
 
 import {useAppTheme} from '../../../theme/ThemeProvider';
-import type {Message} from '../types';
+import type {ChatAction, Message} from '../types';
 
 interface MessageBubbleProps {
   message: Message;
-  onButtonPress: (action: string) => void;
+  onButtonPress: (action: ChatAction) => void;
 }
 
 export default function MessageBubble({

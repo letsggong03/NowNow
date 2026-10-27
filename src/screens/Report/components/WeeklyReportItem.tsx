@@ -1,6 +1,6 @@
 import React from 'react';
 import {ChevronRight} from 'lucide-react-native';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text} from 'react-native';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 
 interface Props {
@@ -17,10 +17,10 @@ export default function WeeklyReportItem({
   return (
     <Pressable
       onPress={onPress}
-      style={[
+      style={({pressed}) => [
         styles.card,
         {
-          backgroundColor: theme.surface,
+          backgroundColor: pressed ? theme.pressed : theme.surface,
           borderColor: theme.border,
         },
       ]}>

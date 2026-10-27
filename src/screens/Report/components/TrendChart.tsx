@@ -1,15 +1,18 @@
-import React, {useEffect, useRef} from 'react';
-import {
-  Animated,
-  StyleSheet,
-  Text,
-  View,
-  type ViewStyle,
-} from 'react-native';
+import React from 'react';
+import {StyleSheet, Text, View} from 'react-native';
 
 import {useAppTheme} from '../../../theme/ThemeProvider';
+import {metricConfig} from '../constants/reportData';
 import type {MetricType} from '../types';
+import AnimatedBar from './AnimatedBar';
 import ReportCard from './ReportCard';
+
+const HOURS_PER_DAY = 24;
+const CHART_HEIGHT = 170;
+const BAR_MAX_HEIGHT = 140;
+const BAR_MIN_HEIGHT = 18;
+const EMPTY_BAR_HEIGHT = 2;
+const HOUR_LABEL_INTERVAL = 3;
 
 interface TrendChartProps {
   selectedMetric: MetricType;
@@ -21,49 +24,17 @@ interface ChartItem {
   value: number;
 }
 
-interface AnimatedBarProps {
-  colorStyle: ViewStyle;
-  height: number;
-  index: number;
-  metricKey: MetricType;
-}
-
-function AnimatedBar({colorStyle, height, index, metricKey}: AnimatedBarProps) {
-  const progress = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    progress.setValue(0);
-    Animated.timing(progress, {
-      delay: index * 35,
-      duration: 320,
-      toValue: 1,
-      useNativeDriver: false,
-    }).start();
-  }, [index, metricKey, progress]);
-
-  const animatedHeight = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, height],
-  });
-
-  return (
-    <Animated.View style={[styles.bar, colorStyle, {height: animatedHeight}]} />
-  );
-}
-
 export default function TrendChart({selectedMetric, healthData}: TrendChartProps) {
   const {theme} = useAppTheme();
 
   const isBloodPressure = selectedMetric === 'bloodPressure';
-  const maxValue = isBloodPressure ? 150 : 120;
-  const title = isBloodPressure ? '최근 24시간 혈압 변화' : '최근 24시간 심박수 변화';
-  const unit = isBloodPressure ? 'mmHg' : 'bpm';
+  const {chartTitle: title, unit, chartBaseMax} = metricConfig[selectedMetric];
 
   const rawData = isBloodPressure
     ? healthData?.bloodPressureSamples ?? []
     : healthData?.heartRateSamples ?? [];
 
-    const chartData: ChartItem[] = Array.from({length: 24}, (_, hour) => ({
+    const chartData: ChartItem[] = Array.from({length: HOURS_PER_DAY}, (_, hour) => ({
     time: hour.toString().padStart(2, '0'),
     value: 0,
     }));
@@ -79,7 +50,11 @@ export default function TrendChart({selectedMetric, healthData}: TrendChartProps
 
       chartData[hour].value = value;
     });
-          
+
+  // 기준값보다 큰 측정값이 있으면 막대가 차트 밖으로 넘치지 않도록 최댓값을 늘린다.
+  const maxValue = Math.max(chartBaseMax, ...chartData.map(item => item.value));
+  const lastHour = (HOURS_PER_DAY - 1).toString();
+
   return (
     <ReportCard>
       <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
@@ -88,13 +63,13 @@ export default function TrendChart({selectedMetric, healthData}: TrendChartProps
         {chartData.map((item, index) => {
           const height =
             item.value > 0
-              ? Math.max(18, (item.value / maxValue) * 140)
-              : 2;
+              ? Math.max(BAR_MIN_HEIGHT, (item.value / maxValue) * BAR_MAX_HEIGHT)
+              : EMPTY_BAR_HEIGHT;
 
           const hour = item.time;
 
           const shouldShowHour =
-            Number(hour) % 3 === 0 || hour === '23';
+            Number(hour) % HOUR_LABEL_INTERVAL === 0 || hour === lastHour;
 
          return (
           <View key={`${item.time}-${index}`} style={styles.barColumn}>
@@ -110,11 +85,11 @@ export default function TrendChart({selectedMetric, healthData}: TrendChartProps
               }
               height={height}
               index={index}
-              metricKey={selectedMetric}
+              animationKey={selectedMetric}
             />
 
             <Text style={[styles.timeLabel, {color: theme.textMuted}]}>
-               {shouldShowHour ? (hour === '23' ? '24' : hour) : ''}
+               {shouldShowHour ? (hour === lastHour ? HOURS_PER_DAY : hour) : ''}
             </Text>
           </View>
           );
@@ -147,16 +122,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     flexDirection: 'row',
     gap: 3,
-    height: 170,
+    height: CHART_HEIGHT,
   },
   barColumn: {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'flex-end',
-  },
-  bar: {
-    borderRadius: 8,
-    width: '100%',
   },
   timeLabel: {
     fontSize: 9,
@@ -175,7 +146,7 @@ const styles = StyleSheet.create({
   },
   emptyBox: {
     alignItems: 'center',
-    height: 170,
+    height: CHART_HEIGHT,
     justifyContent: 'center',
   },
   emptyText: {

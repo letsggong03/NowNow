@@ -1,18 +1,18 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Alert,
 } from "react-native";
 import { useAppTheme } from "../../theme/ThemeProvider";
 import { supabase } from "../../services/supabase"
+import { createAuthStyles } from "./authStyles";
 
 export default function SignupScreen({ navigation }: any) {
   const { theme } = useAppTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createAuthStyles(theme), [theme]);
 
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -100,64 +100,17 @@ export default function SignupScreen({ navigation }: any) {
       />
 
       <TouchableOpacity
-        style={styles.signupButton}
+        style={styles.primaryButton}
         onPress={handleSignup}
       >
         <Text style={styles.buttonText}>회원가입</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-        <Text style={styles.loginText}>
+        <Text style={styles.linkText}>
           이미 계정이 있나요? 로그인
         </Text>
       </TouchableOpacity>
     </View>
   );
 }
-
-const createStyles = (theme: any) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      justifyContent: "center",
-      padding: 24,
-      backgroundColor: theme.background,
-    },
-
-    title: {
-      fontSize: 30,
-      fontWeight: "bold",
-      textAlign: "center",
-      marginBottom: 30,
-      color: theme.text,
-    },
-
-    input: {
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 10,
-      padding: 12,
-      marginBottom: 12,
-      color: theme.text,
-      backgroundColor: theme.inputBackground,
-    },
-
-    signupButton: {
-      padding: 15,
-      borderRadius: 10,
-      alignItems: "center",
-      marginTop: 10,
-      backgroundColor: theme.primary,
-    },
-
-    buttonText: {
-      color: theme.buttonText,
-      fontWeight: "bold",
-    },
-
-    loginText: {
-      marginTop: 20,
-      textAlign: "center",
-      color: theme.text,
-    },
-  });

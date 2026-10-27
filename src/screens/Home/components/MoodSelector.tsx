@@ -1,19 +1,15 @@
 import React, {useEffect, useRef} from 'react';
 import {Animated, Pressable, StyleSheet, Text, View} from 'react-native';
 
+import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
+import {moods} from '../constants/homeContent';
 import type {MoodType} from '../types';
 
 interface MoodSelectorProps {
   selectedMood: MoodType;
   onMoodChange: (mood: MoodType) => void;
 }
-
-const moods: {label: string; value: MoodType; face: string}[] = [
-  {label: '좋지 않아', value: 'sad', face: '☹'},
-  {label: '그냥 그래', value: 'neutral', face: '😐'},
-  {label: '행복해', value: 'happy', face: '☺'},
-];
 
 interface MoodOptionProps {
   label: string;
@@ -96,17 +92,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   option: {
+    ...shadows.subtle,
     alignItems: 'center',
     borderRadius: 16,
     borderWidth: 1,
     minWidth: 0,
     paddingVertical: 12,
     width: '100%',
-    shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 1,
   },
   optionPressable: {
     flex: 1,

@@ -1,7 +1,17 @@
 import {useState} from 'react';
 
+import {
+  chatDelays,
+  chatScript,
+  reliefButtons,
+  reliefResponses,
+  solutionButtons,
+  SUMMARY_OFFER_THRESHOLD,
+  summaryButtons,
+} from '../constants/chatScript';
+import {saveChatMessage} from '../../../services/api/chat';
 import {analyzeStory} from '../utils/analyzeStory';
-import type {Message, MessageRole, ChatStage} from '../types';
+import type {ChatAction, ChatStage, Message, MessageRole} from '../types';
 
 const getCurrentMessageTime = () =>
   new Intl.DateTimeFormat('ko-KR', {
@@ -21,17 +31,28 @@ const createMessage = (
   buttons,
 });
 
-const initialMessage: Message = {
-  role: 'bot',
-  content: '오늘 기분이 좋지 않아 보여... 무슨 일 있어?',
-  createdAt: getCurrentMessageTime(),
+// 대화 흐름을 막지 않도록 저장은 백그라운드로 보내고 실패는 로그만 남긴다.
+const persistMessage = (message: Message) => {
+  saveChatMessage(message.role === 'user' ? 'USER' : 'AI', message.content).catch(
+    error => console.log('[chat] 메시지 저장 실패:', error),
+  );
 };
 
+const pickRandom = <T,>(items: T[]) =>
+  items[Math.floor(Math.random() * items.length)];
+
 export const useChatDiary = () => {
-  const [messages, setMessages] = useState<Message[]>([initialMessage]);
+  const [messages, setMessages] = useState<Message[]>(() => [
+    createMessage('bot', chatScript.greeting),
+  ]);
   const [input, setInput] = useState('');
   const [stage, setStage] = useState<ChatStage>('initial');
   const [userStory, setUserStory] = useState<string[]>([]);
+
+  const appendMessages = (...nextMessages: Message[]) => {
+    setMessages(prev => [...prev, ...nextMessages]);
+    nextMessages.forEach(persistMessage);
+  };
 
   const handleSend = () => {
     const trimmedInput = input.trim();
@@ -41,123 +62,81 @@ export const useChatDiary = () => {
     }
 
     const nextStory = [...userStory, trimmedInput];
-    const userMessage = createMessage('user', trimmedInput);
 
-    setMessages(prev => [...prev, userMessage]);
+    appendMessages(createMessage('user', trimmedInput));
     setUserStory(nextStory);
     setInput('');
 
     setTimeout(() => {
-      let botResponse: Message;
-
       if (stage === 'initial' || stage === 'listening') {
-        const responses = [
-          '그랬군요! 더 이야기해 주시겠어요?',
-          '정말 힘드셨겠어요.',
-          '잘 들었어요. 또 어떤 일이 있었나요?',
-        ];
-
-        botResponse = createMessage(
-          'bot',
-          responses[Math.floor(Math.random() * responses.length)],
+        appendMessages(
+          createMessage('bot', pickRandom(chatScript.listeningReplies)),
         );
         setStage('listening');
       } else {
-        botResponse = createMessage('bot', '알겠습니다.');
+        appendMessages(createMessage('bot', chatScript.acknowledge));
       }
+    }, chatDelays.reply);
 
-      setMessages(prev => [...prev, botResponse]);
-    }, 500);
-
-    if (nextStory.length >= 3 && stage === 'listening') {
+    if (nextStory.length >= SUMMARY_OFFER_THRESHOLD && stage === 'listening') {
       setTimeout(() => {
-        const summaryOffer = createMessage(
-          'bot',
-          '오늘 하루 정말 힘들었겠어요. 제가 오늘 하루를 정리해드릴까요?',
-          [
-            {label: '예', action: 'summarize_yes'},
-            {label: '아니오', action: 'summarize_no'},
-          ],
+        appendMessages(
+          createMessage('bot', chatScript.summaryOffer, summaryButtons),
         );
-
-        setMessages(prev => [...prev, summaryOffer]);
         setStage('summary_confirm');
-      }, 1000);
+      }, chatDelays.followUp);
     }
   };
 
-  const handleButtonClick = (action: string) => {
-    if (action === 'summarize_yes') {
-      const analysis = analyzeStory(userStory);
-      const summaryMessage = createMessage(
-        'bot',
-        `${analysis.summary}\n\n감정일기 키워드: ${analysis.keywords.join(
-          ' ',
-        )}`,
-      );
+  const handleButtonClick = (action: ChatAction) => {
+    switch (action) {
+      case 'summarize_yes': {
+        const analysis = analyzeStory(userStory);
 
-      setMessages(prev => [...prev, summaryMessage]);
-      setStage('summary_shown');
+        appendMessages(
+          createMessage(
+            'bot',
+            `${analysis.summary}\n\n${
+              chatScript.keywordsLabel
+            }: ${analysis.keywords.join(' ')}`,
+          ),
+        );
+        setStage('summary_shown');
 
-      setTimeout(() => {
-        const solutionOffer = createMessage('bot', '해결책도 알려드릴까요?', [
-            {label: '예', action: 'solution_yes'},
-            {label: '아니오', action: 'solution_no'},
-          ]);
+        setTimeout(() => {
+          appendMessages(
+            createMessage('bot', chatScript.solutionOffer, solutionButtons),
+          );
+          setStage('solution_confirm');
+        }, chatDelays.followUp);
+        break;
+      }
+      case 'summarize_no':
+        appendMessages(createMessage('bot', chatScript.summaryDeclined));
+        break;
+      case 'solution_yes': {
+        const analysis = analyzeStory(userStory);
 
-        setMessages(prev => [...prev, solutionOffer]);
-        setStage('solution_confirm');
-      }, 1000);
-    } else if (action === 'summarize_no') {
-      setMessages(prev => [
-        ...prev,
-        createMessage(
-          'bot',
-          '알겠어요! 더 이야기하고 싶으시면 언제든 말씀해 주세요.',
-        ),
-      ]);
-    } else if (action === 'solution_yes') {
-      const analysis = analyzeStory(userStory);
-      const solutionMessages = analysis.solutions.map(solution =>
-        createMessage('bot', solution),
-      );
-
-      setMessages(prev => [...prev, ...solutionMessages]);
-
-      setTimeout(() => {
-        const actionMessage = createMessage(
-          'bot',
-          '스트레스 완화를 위해 이런 활동들은 어떠세요?',
-          [
-            {label: '편안한 우리집', action: 'home'},
-            {label: '명상', action: 'meditation'},
-            {label: '커뮤니티에 털어놓기', action: 'community'},
-          ],
+        appendMessages(
+          ...analysis.solutions.map(solution => createMessage('bot', solution)),
         );
 
-        setMessages(prev => [...prev, actionMessage]);
-        setStage('solution_shown');
-      }, 1500);
-    } else if (action === 'solution_no') {
-      setMessages(prev => [
-        ...prev,
-        createMessage('bot', '알겠어요! 오늘도 고생하셨어요.'),
-      ]);
-    } else if (
-      action === 'home' ||
-      action === 'meditation' ||
-      action === 'community'
-    ) {
-      const actionMessages: Record<string, string> = {
-        home: '편안한 조명과 온도로 집안 분위기를 조성해드릴게요.',
-        meditation: '명상 도우미를 실행할게요.',
-        community: '커뮤니티로 이동합니다.',
-      };
-
-      setMessages(prev => [
-        ...prev,
-        createMessage('bot', actionMessages[action]),
-      ]);
+        setTimeout(() => {
+          appendMessages(
+            createMessage('bot', chatScript.reliefOffer, reliefButtons),
+          );
+          setStage('solution_shown');
+        }, chatDelays.reliefOffer);
+        break;
+      }
+      case 'solution_no':
+        appendMessages(createMessage('bot', chatScript.solutionDeclined));
+        break;
+      case 'home':
+      case 'meditation':
+      case 'community':
+        appendMessages(createMessage('bot', reliefResponses[action]));
+        break;
     }
   };
 

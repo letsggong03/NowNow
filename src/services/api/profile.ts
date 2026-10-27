@@ -1,6 +1,15 @@
 import { supabase } from "../supabase";
+import { getMe } from "./auth";
 
+// 백엔드(/api/auth/me)를 먼저 쓰고, 서버에 못 붙으면 Supabase에서 직접 읽는다.
 export async function getProfile() {
+  try {
+    const me = await getMe();
+    return me.nickname ?? null;
+  } catch (apiError) {
+    console.log("[getProfile] API 실패, Supabase로 폴백:", apiError);
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -8,9 +17,9 @@ export async function getProfile() {
   if (!user) return null;
 
   const { data, error } = await supabase
-    .from("user_information")
+    .from("user_informations")
     .select("nickname")
-    .eq("user_id", user.id)
+    .eq("id", user.id)
     .single();
 
   if (error) {
@@ -18,5 +27,5 @@ export async function getProfile() {
     return null;
   }
 
-  return data.nickname;
+  return data.nickname as string | null;
 }
