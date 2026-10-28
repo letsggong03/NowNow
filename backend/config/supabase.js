@@ -16,9 +16,16 @@ if (!supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 const context = new AsyncLocalStorage();
+const adminReader = process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY, {auth: {persistSession: false, autoRefreshToken: false}})
+  : null;
 // User JWT + RLS is used per request. No service-role key is needed in the app.
 module.exports = new Proxy(supabase, {
   get(target, property) {
+    if (property === 'adminReadClient') return () => {
+      if (!adminReader) throw new Error('서버 관리자 읽기 키가 설정되지 않았습니다.');
+      return adminReader;
+    };
     if (property === 'withUser') return (token, next) => {
       const client = createClient(supabaseUrl, process.env.SUPABASE_ANON_KEY || supabaseKey, {
         global: {headers: {Authorization: `Bearer ${token}`}},

@@ -21,8 +21,9 @@ jest.mock('../src/services/chatStorage', () => ({
 }));
 let state: ReturnType<typeof useChatDiary>;
 let app: Renderer.ReactTestRenderer;
+let selectedDate: string | undefined;
 function Harness() {
-  state = useChatDiary();
+  state = useChatDiary(selectedDate);
   return null;
 }
 const flush = async () => {
@@ -31,6 +32,7 @@ const flush = async () => {
   });
 };
 beforeEach(() => {
+  selectedDate = undefined;
   jest.clearAllMocks();
   (getChatMessages as jest.Mock).mockResolvedValue([]);
   (saveChatMessage as jest.Mock).mockResolvedValue({});
@@ -127,4 +129,37 @@ test('load failure blocks sending until restore succeeds', async () => {
     await state!.restore();
   });
   expect(state!.error).toBe('');
+});
+
+
+test('completed conversation is summarized automatically without pressing the button', async () => {
+  jest.useFakeTimers();
+  try {
+    await mount();
+    for (const text of ['오늘 발표 때문에 긴장돼', '준비를 오래 했어', '잠시 쉬어볼게']) {
+      await act(async () => {await state!.handleSend(text);});
+    }
+    (requestReply as jest.Mock).mockResolvedValueOnce(JSON.stringify({summary:'발표 준비로 긴장한 하루',keywords:['학업']}));
+    await act(async () => {jest.advanceTimersByTime(30000); await Promise.resolve();});
+    const {persistSummary} = require('../src/services/chatStorage');
+    expect(persistSummary).toHaveBeenCalledWith('발표 준비로 긴장한 하루', ['학업']);
+    await act(async () => {jest.advanceTimersByTime(30000); await Promise.resolve();});
+    expect(persistSummary).toHaveBeenCalledTimes(1);
+  } finally {jest.useRealTimers();}
+});
+
+test('user message is saved even when AI fails', async () => {
+  await mount();
+  (requestReply as jest.Mock).mockRejectedValueOnce(new Error('AI 연결 실패'));
+  await act(async () => {await state!.handleSend('남겨야 할 오늘의 이야기');});
+  expect(saveChatMessage).toHaveBeenCalledWith('USER', '남겨야 할 오늘의 이야기');
+  expect(state!.messages.some(message => message.content === '남겨야 할 오늘의 이야기')).toBe(true);
+});
+
+test('the navigation ISO timestamp is treated as today, with daily history restored', async () => {
+  selectedDate = new Date().toISOString();
+  (getChatMessages as jest.Mock).mockResolvedValue([{chat_role:'USER',message:'오늘 기록',created_at:selectedDate}]);
+  await mount();
+  expect(state!.historical).toBe(false);
+  expect(state!.messages.some(row => row.content === '오늘 기록')).toBe(true);
 });

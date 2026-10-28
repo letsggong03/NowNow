@@ -38,7 +38,7 @@ export default function SettingsSection({title, items}: SettingsSectionProps) {
               onPress={item.onPress ?? (() => Alert.alert(item.label,
                 item.label === '도움말'
                   ? '홈에서 기분과 취향을 선택하고, 채팅에서 뿡뿡이와 대화할 수 있습니다. 리포트에서 건강 데이터와 주간 화면을 확인하세요. 시연 대화는 이 폰에만 저장됩니다.'
-                  : '현재 팀 원본의 화면입니다. 이 메뉴의 계정·저장 기능은 로그인 및 백엔드 서버 연결이 필요합니다.'))}
+                  : item.label === '스트레스 기준 관리' ? '스트레스 지표는 팀의 계산 기준으로 제공돼요. 개인별 감지 기준 변경은 아직 지원하지 않아요.' : '이 설정의 변경 기능은 준비 중이에요.'))}
               style={({pressed}) => [
                 styles.row,
                 !isLast && styles.divider,

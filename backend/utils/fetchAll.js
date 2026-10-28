@@ -9,7 +9,10 @@ async function fetchAll(buildQuery) {
     const { data, error } = await buildQuery().range(from, from + PAGE_SIZE - 1);
 
     if (error) {
-      throw new Error(error.message);
+      const failure = new Error(error.message);
+      failure.code = error.code;
+      failure.details = error.details;
+      throw failure;
     }
 
     rows.push(...data);

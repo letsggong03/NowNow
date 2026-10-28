@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import {AppState} from 'react-native';
+const {kstToday, kstDateOf} = require('../../../../backend/utils/kstDate');
 
 import {
   chatDelays,
@@ -46,7 +48,10 @@ const createMessage = (
   buttons,
 });
 
-export const useChatDiary = () => {
+export const useChatDiary = (selectedDate?: string) => {
+  const conversationDate = !selectedDate ? kstToday()
+    : /^\d{4}-\d{2}-\d{2}$/.test(selectedDate) ? selectedDate : kstDateOf(selectedDate);
+  const historical = conversationDate !== kstToday();
   const [messages, setMessages] = useState<Message[]>(() => [
     createMessage('bot', chatScript.greeting),
   ]);
@@ -141,7 +146,8 @@ export const useChatDiary = () => {
     setLoading(true);
     setError('');
     try {
-      const saved = await getChatMessages();
+      const all = await getChatMessages();
+      const saved = selectedDate ? all.filter(row => kstDateOf(row.created_at) === conversationDate) : all;
       if (!active.current) return;
       const restored: Message[] = saved.map(row => ({
         role: row.chat_role === 'USER' ? 'user' : 'bot',
@@ -197,6 +203,34 @@ export const useChatDiary = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (historical || !userStory.length || sending || loading) return;
+    const story = [...userStory];
+    const autoSummarize = async () => {
+      const key = JSON.stringify(story);
+      if (lock.current || summarySavedKey.current === key) return;
+      lock.current = true;
+      if (active.current) setSending(true);
+      try {
+        const analysis = summaryCache.current?.key === key ? summaryCache.current.data : await summarizeDay(story);
+        summaryCache.current = {key, data: analysis};
+        const status = await persistSummary(analysis.summary, analysis.keywords);
+        if (!status.includes('실패') && !status.includes('필요합니다')) summarySavedKey.current = key;
+        if (active.current) setStorageStatus(status);
+      } catch {
+        // Keep the conversation usable; the manual summary action remains retryable.
+      } finally {
+        lock.current = false;
+        if (active.current) setSending(false);
+      }
+    };
+    const idle = setTimeout(() => {void autoSummarize();}, story.length >= 3 ? 30000 : 3 * 60 * 60 * 1000);
+    const listener = AppState.addEventListener('change', next => {
+      if (next === 'background') void autoSummarize();
+    });
+    return () => {clearTimeout(idle); listener.remove();};
+  }, [userStory, sending, loading, historical]);
+
   const appendMessages = (...nextMessages: Message[]) => {
     setMessages(prev => [...prev, ...nextMessages]);
     queue.current.push(...nextMessages);
@@ -205,7 +239,7 @@ export const useChatDiary = () => {
 
   const handleSend = async (question?: string) => {
     const trimmedInput = (typeof question === 'string' ? question : input).trim();
-    if (!trimmedInput || lock.current || loading || error || saveError) return;
+    if (!trimmedInput || historical || lock.current || loading || error || saveError) return;
     if (trimmedInput.length > 2000) {
       setRequestError('메시지는 2000자 이내로 입력해 주세요.');
       return;
@@ -229,6 +263,8 @@ export const useChatDiary = () => {
     }
     const pendingUser = createMessage('user', trimmedInput);
     setMessages(prev => [...prev, pendingUser]);
+    queue.current.push(pendingUser);
+    void retrySave();
     setInput('');
     try {
       let context: HealthContext;
@@ -238,10 +274,9 @@ export const useChatDiary = () => {
       setHealthContext(context);
       const reply = await requestReply(groundedPrompt(trimmedInput, context), history.slice(-10));
       if (!active.current) return;
-      const user = createMessage('user', trimmedInput);
       const bot = createMessage('bot', reply);
       setMessages(prev => [...prev, bot]);
-      queue.current.push(user, bot);
+      queue.current.push(bot);
       retrySave();
       const nextStory = [...userStory, trimmedInput];
       setUserStory(nextStory);
@@ -257,7 +292,6 @@ export const useChatDiary = () => {
       }
     } catch (failure) {
       if (active.current) {
-        setMessages(prev => prev.filter(message => message !== pendingUser));
         setInput(trimmedInput);
         setRequestError(
           failure instanceof Error ? failure.message : 'AI 연결에 실패했어요.',
@@ -372,6 +406,7 @@ export const useChatDiary = () => {
   };
 
   return {
+    historical,
     storageStatus,
     healthContext,
     resetting,

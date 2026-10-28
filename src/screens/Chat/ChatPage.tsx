@@ -44,6 +44,7 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
   const { theme } = useAppTheme();
   const scrollViewRef = useRef<ScrollView>(null);
   const {
+    historical,
     messages,
     input,
     setInput,
@@ -58,7 +59,7 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
     retrySave,
     resetting,
     resetConversation,
-  } = useChatDiary();
+  } = useChatDiary(date);
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -75,12 +76,12 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
       >
         <View style={[styles.chatPanel, { backgroundColor: theme.background }]}>
           <ChatHeader title={formatChatDate(date)} onBack={onBack} />
-          <Pressable accessibilityRole="button" disabled={loading || sending || resetting}
+          <Pressable accessibilityRole="button" disabled={historical || loading || sending || resetting}
             onPress={() => handleSend('뿡뿡아, 오늘 내 건강 기록은 어때? 확인된 수치와 지금 할 수 있는 작은 실천 하나를 다정하게 알려줘.')}>
             <Text style={[styles.statusAction, {color: theme.accent}]}>오늘의 건강기록♡</Text>
           </Pressable>
           {chatAiConfig.demoMode === true && (
-            <Pressable accessibilityRole="button" disabled={loading || sending || resetting}
+            <Pressable accessibilityRole="button" disabled={historical || loading || sending || resetting}
               onPress={() => Alert.alert('대화 초기화',
                 '이 기기에 보관된 대화와 뿡뿡이의 최근 대화 기억을 지울까요? 서버에 저장된 기록은 유지돼요.',
                 [{text: '취소', style: 'cancel'},
@@ -140,7 +141,7 @@ export default function ChatPage({ date, onBack }: ChatPageProps) {
             </Pressable>
           )}
           <ChatInput
-            disabled={loading || sending || resetting || !!error || !!saveError}
+            disabled={historical || loading || sending || resetting || !!error || !!saveError}
             value={input}
             onChangeText={setInput}
             onSend={handleSend}

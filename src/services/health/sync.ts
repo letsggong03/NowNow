@@ -19,7 +19,7 @@ export async function syncHealth(data: any): Promise<string[]> {
     try {
       for (let i = 0; i < rows.length; i += 500) {
         const {error} = await supabase.from(table).upsert(rows.slice(i, i + 500), {onConflict});
-        if (error) {errors.push(`${table}: 저장 권한/스키마 확인 필요`); break;}
+        if (error) {console.warn("[health-sync]", table, error.code, error.message, error.details); errors.push(`${table}: 저장 실패 (${error.code})`); break;}
       }
     } catch {errors.push(`${table}: 저장 연결 오류`);}
   }));

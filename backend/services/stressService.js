@@ -55,41 +55,6 @@ async function fetchHealthData(user_id, { start, end }) {
   return { heartRates, bloodPressures, steps, sleeps };
 }
 
-// 계산한 점수를 daily_stress_scores에 저장한다. 주간 리포트·추세 조회용 기록이라
-// 저장에 실패해도 응답은 그대로 돌려준다.
-async function saveScores(user_id, results) {
-  const rows = results
-    .filter(result => result.finalDailyStressScore !== null)
-    .map(result => ({
-      user_id,
-      record_date: result.date,
-      final_score: result.finalDailyStressScore,
-      daily_stress: result.dailyStress,
-      realtime_score: result.dailyRealtimeStress.score,
-      avg_stress: result.dailyRealtimeStress.avgStress,
-      max_stress: result.dailyRealtimeStress.maxStress,
-      high_ratio: result.dailyRealtimeStress.highRatio,
-      avg_systolic: result.bloodPressure.avgSystolic,
-      bp_score: result.bloodPressure.score,
-      total_steps: result.steps.total,
-      step_score: result.steps.score,
-      sleep_minutes: result.sleep.minutes,
-      sleep_factor: result.sleep.factor,
-      missing: result.missing,
-      calculated_at: new Date().toISOString()
-    }));
-
-  if (rows.length === 0) return;
-
-  const { error } = await supabase
-    .from("daily_stress_scores")
-    .upsert(rows, { onConflict: "user_id,record_date" });
-
-  if (error) {
-    console.error("[stressService] 점수 저장 실패:", error.message);
-  }
-}
-
 async function getRealtimeStress(user_id, date) {
   const { start, end } = getRange(date, date);
   const heartRates = await fetchAll(() =>
@@ -111,11 +76,8 @@ async function getDailyStress(user_id, date, sleepMinutesOverride = null) {
   const data = await fetchHealthData(user_id, getRange(date, date));
   const [result] = calculateByDate([date], data, sleepMinutesOverride);
 
-  if (sleepMinutesOverride === null) {
-    await saveScores(user_id, [result]);
-  }
 
-  return result;
+  return sleepMinutesOverride === null ? (await mergeStoredScores(user_id, [result], date, date))[0] : result;
 }
 
 // from ~ to 날짜별 하루 스트레스 (둘 다 포함, 최대 62일)
@@ -128,9 +90,25 @@ async function getDailyStressRange(user_id, from, to) {
 
   const data = await fetchHealthData(user_id, getRange(from, to));
   const results = calculateByDate(dates, data);
-  await saveScores(user_id, results);
 
-  return results;
+  return mergeStoredScores(user_id, results, from, to);
+}
+
+// Existing DB scores (including explicitly tagged demo rows) can be shown even
+// while the separate watch-to-DB raw-data synchronization is unfinished.
+async function mergeStoredScores(user_id, results, from, to) {
+  const {data, error} = await supabase.adminReadClient().from('daily_stress_scores')
+    .select('record_date,final_score,missing').eq('user_id', user_id)
+    .gte('record_date', from).lte('record_date', to);
+  if (error) throw new Error(`저장 스트레스 조회 실패 (${error.code}): ${error.message}`);
+  const stored = new Map((data || []).map(row => [row.record_date, row]));
+  return results.map(result => {
+    const row = stored.get(result.date);
+    if (row?.final_score == null) return {...result, finalDailyStressScore: null};
+    const demo = !!row.missing?.includes('demo_fixture');
+    return {...result, finalDailyStressScore: Number(row.final_score), demo,
+      source: demo ? '시연용 스트레스 기록' : '팀 DB 저장 기록'};
+  });
 }
 
 module.exports = {

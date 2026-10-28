@@ -92,6 +92,7 @@ async function getWeeklyReports(user_id, limit) {
       weekEnd,
       averageStressScore,
       dayCount,
+      demo: days.some(day => inWeek(day.date) && day.demo),
       topCause: topCause?.cause ?? null
     };
   });
@@ -115,9 +116,11 @@ async function getWeeklyReport(user_id, weekStart) {
     weekStart,
     weekEnd,
     ...summarizeDays(days),
+    demo: days.some(day => day.demo),
     days: days.map(day => ({
       date: day.date,
       finalDailyStressScore: day.finalDailyStressScore,
+      demo: !!day.demo,
       dailyStress: day.dailyStress,
       sleepMinutes: day.sleep.minutes,
       totalSteps: day.steps.total,
