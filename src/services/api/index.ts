@@ -5,3 +5,4 @@ export * as reportApi from './reports';
 export * as communityApi from './community';
 export * as healthApi from './health';
 export * as musicApi from './music';
+export * as characterApi from './character';
