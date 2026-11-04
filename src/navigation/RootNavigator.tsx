@@ -34,21 +34,17 @@ export default function RootNavigator() {
   }, []);
 
   // 가입 직후·첫 로그인·세션 복원 어느 경우든 프로필 행이 있게 한다.
-  const user = session?.user;
-  useEffect(() => {
-    if (user) {
-      ensureProfile(user);
-    }
-  }, [user]);
-
+  // 알림 설정은 프로필 행을 읽으므로 프로필을 먼저 확인한 뒤 예약한다.
   // 로그인하면 설정대로 하루 마무리 알림을 폰에 예약하고, 로그아웃하면 끈다.
-  const userId = user?.id;
+  const userId = session?.user?.id;
   useEffect(() => {
     if (loading) return;
     if (userId) {
-      syncDailyReminder(userId).catch(error =>
-        console.log('[dailyReminder] 예약 실패:', error?.message),
-      );
+      ensureProfile()
+        .then(syncDailyReminder)
+        .catch(error =>
+          console.log('[dailyReminder] 예약 실패:', error?.message),
+        );
     } else {
       cancelDailyReminder().catch(() => {});
     }

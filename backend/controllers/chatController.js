@@ -4,16 +4,16 @@ const { createRateLimiter, parseChatRequest } = require("../utils/chatRelay");
 
 async function createMessage(req, res) {
   try {
-    const { user_id, chat_role, message } = req.body;
+    const { chat_role, message } = req.body;
 
-    if (!user_id || !chat_role || !message) {
+    if (!chat_role || !message) {
       return res.status(400).json({
-        message: "user_id, chat_role, message가 필요합니다."
+        message: "chat_role, message가 필요합니다."
       });
     }
 
     const data = await chatService.createMessage({
-      user_id,
+      user_id: req.user.id,
       chat_role,
       message
     });
@@ -32,15 +32,7 @@ async function createMessage(req, res) {
 
 async function getMessages(req, res) {
   try {
-    const { user_id } = req.query;
-
-    if (!user_id) {
-      return res.status(400).json({
-        message: "user_id가 필요합니다."
-      });
-    }
-
-    const data = await chatService.getMessagesByUser(user_id);
+    const data = await chatService.getMessagesByUser(req.user.id);
 
     res.json({
       message: "채팅 기록 조회 성공",
@@ -57,7 +49,6 @@ async function getMessages(req, res) {
 async function deleteMessage(req, res) {
   try {
     const { chat_id } = req.params;
-    const { user_id } = req.body;
 
     if (!chat_id) {
       return res.status(400).json({
@@ -65,7 +56,7 @@ async function deleteMessage(req, res) {
       });
     }
 
-    await chatService.deleteMessage(chat_id, user_id);
+    await chatService.deleteMessage(chat_id, req.user.id);
 
     res.json({
       message: "채팅 메시지 삭제 성공"
@@ -80,11 +71,11 @@ async function deleteMessage(req, res) {
 
 async function createSummary(req, res) {
   try {
-    const { chat_id, user_id, summary, keywords = [] } = req.body;
+    const { chat_id, summary, keywords = [] } = req.body;
 
-    if (!chat_id || !user_id || !summary) {
+    if (!chat_id || !summary) {
       return res.status(400).json({
-        message: "chat_id, user_id, summary가 필요합니다."
+        message: "chat_id, summary가 필요합니다."
       });
     }
 
@@ -101,7 +92,7 @@ async function createSummary(req, res) {
 
     const data = await chatService.createSummary({
       chat_id,
-      user_id,
+      user_id: req.user.id,
       summary,
       keywords
     });
@@ -120,15 +111,7 @@ async function createSummary(req, res) {
 
 async function getSummaries(req, res) {
   try {
-    const { user_id } = req.query;
-
-    if (!user_id) {
-      return res.status(400).json({
-        message: "user_id가 필요합니다."
-      });
-    }
-
-    const data = await chatService.getSummariesByUser(user_id);
+    const data = await chatService.getSummariesByUser(req.user.id);
 
     res.json({
       message: "채팅 요약 조회 성공",

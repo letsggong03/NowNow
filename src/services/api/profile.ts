@@ -1,51 +1,50 @@
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import { getMe } from "./auth";
+import { ApiError, request } from "./client";
 
-// 이메일 인증을 거치면 가입 직후에는 세션이 없어 RLS 때문에 프로필을 넣을 수 없다.
-// 그래서 닉네임은 가입 때 user_metadata에 담아 두고, 세션이 생기면 프로필 행을 만든다.
+export interface UserSettings {
+  nickname: string;
+  status_message: string | null;
+  character_type: string | null;
+  notification_enabled: boolean;
+  notify_time: string; // "HH:MM"
+  stress_threshold: number | null;
+}
+
+// 이메일 인증을 거치면 가입 직후에는 세션이 없어 프로필을 넣을 수 없다.
+// 세션이 생기면 서버가 가입 때 넣은 닉네임(user_metadata)으로 프로필 행을 만든다.
 // 이미 있으면 건드리지 않는다.
-export async function ensureProfile(user: User) {
-  const { error } = await supabase.from("user_informations").upsert(
-    {
-      user_id: user.id,
-      nickname: user.user_metadata?.nickname ?? "사용자",
-    },
-    { onConflict: "user_id", ignoreDuplicates: true }
-  );
-
-  if (error) {
-    console.log("[ensureProfile] 프로필 저장 실패:", error.message);
+export async function ensureProfile() {
+  try {
+    await request("POST", "/api/me/profile");
+  } catch (error) {
+    console.log("[ensureProfile] 프로필 저장 실패:", error);
   }
 }
 
-// 백엔드(/api/auth/me)를 먼저 쓰고, 서버에 못 붙으면 Supabase에서 직접 읽는다.
+// 프로필 행이 아직 없으면 null
+export async function getSettings() {
+  try {
+    const res = await request<{ message: string; data: UserSettings }>(
+      "GET",
+      "/api/me/settings"
+    );
+    return res.data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+// 서버에 못 붙거나 프로필 행이 아직 없으면 가입 때 넣은 닉네임을 쓴다.
 export async function getProfile() {
   try {
     const me = await getMe();
-    return me.nickname ?? null;
+    if (me.nickname) return me.nickname;
   } catch (apiError) {
-    console.log("[getProfile] API 실패, Supabase로 폴백:", apiError);
+    console.log("[getProfile] 프로필 조회 실패:", apiError);
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const { data, error } = await supabase
-    .from("user_informations")
-    .select("nickname")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.log(error);
-  }
-
-  // 프로필 행이 아직 없으면 가입 때 넣은 닉네임을 쓴다.
-  return (data?.nickname ?? user.user_metadata?.nickname ?? null) as
-    | string
-    | null;
+  const { data } = await supabase.auth.getSession();
+  return (data.session?.user.user_metadata?.nickname ?? null) as string | null;
 }

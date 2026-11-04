@@ -1,6 +1,6 @@
 import {NativeModules, PermissionsAndroid, Platform} from 'react-native';
 
-import {supabase} from '../supabase';
+import {getSettings} from '../api/profile';
 
 // 하루 마무리 알림: 폰 시간 기준 매일 정한 시각에 폰이 직접 알림을 띄운다(서버 불필요).
 // 실제 예약은 Android 네이티브 모듈(DailyReminderModule)이 한다.
@@ -64,20 +64,15 @@ export async function openExactAlarmSettings() {
   if (isAvailable()) await DailyReminderModule.openExactAlarmSettings();
 }
 
-// DB 설정(user_informations)을 읽어 예약한다. 정하지 않았으면 켜짐·23:00.
-export async function syncDailyReminder(userId: string) {
-  const {data, error} = await supabase
-    .from('user_informations')
-    .select('notification_enabled, notify_time')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (error) {
-    console.log('[dailyReminder] 설정 조회 실패:', error.message);
-  }
+// 서버에서 알림 설정을 읽어 예약한다. 정하지 않았거나 못 읽었으면 켜짐·23:00.
+export async function syncDailyReminder() {
+  const settings = await getSettings().catch(error => {
+    console.log('[dailyReminder] 설정 조회 실패:', error);
+    return null;
+  });
 
   return applyDailyReminder({
-    enabled: data?.notification_enabled ?? true,
-    time: data?.notify_time?.slice(0, 5) ?? DEFAULT_REMINDER_TIME,
+    enabled: settings?.notification_enabled ?? true,
+    time: settings?.notify_time ?? DEFAULT_REMINDER_TIME,
   });
 }

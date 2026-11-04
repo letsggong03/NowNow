@@ -35,16 +35,11 @@ async function getMessagesByUser(user_id) {
 }
 
 async function deleteMessage(chat_id, user_id) {
-  let query = supabase
+  const { error } = await supabase
     .from("chat_messages")
     .delete()
-    .eq("chat_id", chat_id);
-
-  if (user_id) {
-    query = query.eq("user_id", user_id);
-  }
-
-  const { error } = await query;
+    .eq("chat_id", chat_id)
+    .eq("user_id", user_id);
 
   if (error) {
     throw new Error(error.message);

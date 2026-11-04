@@ -5,6 +5,7 @@ const requireUser = require("../middleware/requireUser");
 
 router.use(requireUser);
 
+router.post("/profile", meController.ensureProfile);
 router.get("/settings", meController.getSettings);
 router.put("/settings", meController.updateSettings);
 router.post("/push-tokens", meController.savePushToken);

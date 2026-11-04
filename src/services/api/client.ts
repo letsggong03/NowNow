@@ -45,17 +45,6 @@ export const getAccessToken = async () => {
   return data.session?.access_token ?? null;
 };
 
-export const getCurrentUserId = async () => {
-  const {data} = await supabase.auth.getSession();
-  const userId = data.session?.user.id;
-
-  if (!userId) {
-    throw new ApiError(401, '로그인이 필요합니다.', null);
-  }
-
-  return userId;
-};
-
 export async function request<T>(
   method: HttpMethod,
   path: string,

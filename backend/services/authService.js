@@ -1,4 +1,14 @@
+const { createClient } = require("@supabase/supabase-js");
 const supabase = require("../config/supabase");
+
+// 공용 클라이언트로 로그인하면 그 사용자 세션이 서버의 다른 DB 요청에도 붙는다.
+// 로그인은 요청마다 따로 만든 클라이언트로 한다.
+const createSignInClient = () =>
+  createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
 
 async function signup({ email, password, nickname, character_type, notification_enabled }) {
   const { data: authData, error: authError } =
@@ -39,7 +49,7 @@ async function signup({ email, password, nickname, character_type, notification_
 }
 
 async function login({ email, password }) {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await createSignInClient().auth.signInWithPassword({
     email,
     password
   });

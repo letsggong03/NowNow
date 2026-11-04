@@ -12,6 +12,23 @@ const toSettings = row => ({
   notify_time: row.notify_time ? row.notify_time.slice(0, 5) : DEFAULT_NOTIFY_TIME
 });
 
+// 이메일 인증을 거치면 가입 때는 세션이 없어 프로필을 못 만든다.
+// 닉네임은 가입 때 user_metadata에 담겨 있으니 그걸로 만든다.
+async function ensureProfile(user) {
+  const nickname = String(user.user_metadata?.nickname ?? "").trim().slice(0, 20) || "사용자";
+
+  const { error } = await supabase
+    .from("user_informations")
+    .upsert(
+      { user_id: user.id, nickname },
+      { onConflict: "user_id", ignoreDuplicates: true }
+    );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 async function getSettings(user_id) {
   const { data, error } = await supabase
     .from("user_informations")
@@ -81,6 +98,7 @@ async function deleteAccount(user_id) {
 }
 
 module.exports = {
+  ensureProfile,
   getSettings,
   updateSettings,
   savePushToken,

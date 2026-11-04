@@ -36,12 +36,13 @@ async function getReportsByUser(user_id) {
   return data;
 }
 
-async function getReportById(health_record_id) {
+async function getReportById(health_record_id, user_id) {
   const { data, error } = await supabase
     .from("health_reports")
     .select("*")
     .eq("health_record_id", health_record_id)
-    .single();
+    .eq("user_id", user_id)
+    .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
