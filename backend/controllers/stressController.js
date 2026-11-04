@@ -5,15 +5,15 @@ const isDate = value => typeof value === "string" && kstDayRange(value) !== null
 
 async function getRealtimeStress(req, res) {
   try {
-    const { user_id, date } = req.query;
+    const { date } = req.query;
 
-    if (!user_id || !isDate(date)) {
+    if (!isDate(date)) {
       return res.status(400).json({
-        message: "user_id와 date(YYYY-MM-DD)가 필요합니다."
+        message: "date(YYYY-MM-DD)가 필요합니다."
       });
     }
 
-    const data = await stressService.getRealtimeStress(user_id, date);
+    const data = await stressService.getRealtimeStress(req.user.id, date);
 
     res.json({
       message: "실시간 스트레스 조회 성공",
@@ -29,11 +29,11 @@ async function getRealtimeStress(req, res) {
 
 async function getDailyStress(req, res) {
   try {
-    const { user_id, date, sleep_minutes } = req.query;
+    const { date, sleep_minutes } = req.query;
 
-    if (!user_id || !isDate(date)) {
+    if (!isDate(date)) {
       return res.status(400).json({
-        message: "user_id와 date(YYYY-MM-DD)가 필요합니다."
+        message: "date(YYYY-MM-DD)가 필요합니다."
       });
     }
 
@@ -49,7 +49,7 @@ async function getDailyStress(req, res) {
       }
     }
 
-    const data = await stressService.getDailyStress(user_id, date, sleepMinutes);
+    const data = await stressService.getDailyStress(req.user.id, date, sleepMinutes);
 
     res.json({
       message: "일일 스트레스 조회 성공",

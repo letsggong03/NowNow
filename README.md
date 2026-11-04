@@ -113,17 +113,21 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
 - 수면은 자정을 넘기기 때문에 "오늘"이 아니라 **최근 24시간** 기준으로 읽고, 가장 늦게 끝난 세션을 `latest`로 써요.
 - 데이터가 없으면 `latest*` 값은 `0`, 시각은 `null`, 목록은 빈 배열이에요.
 
-### Supabase 저장
+### 저장 (앱 → 백엔드 → Supabase)
 
-| 테이블 | 컬럼 | 충돌 기준 |
-|---|---|---|
-| `heart_rate_records` | `user_id`, `measured_at`, `bpm` | `user_id, measured_at` |
-| `blood_pressure_records` | `user_id`, `measured_at`, `systolic`, `diastolic` | `user_id, measured_at` |
-| `oxygen_records` | `user_id`, `measured_at`, `percentage` | `user_id, measured_at` |
+앱은 읽은 값을 [`saveHealthRecords`](src/services/api/health.ts)로 백엔드 `POST /api/health/records`에 보내고, 서버가 Supabase에 저장해요. 앱은 DB에 직접 쓰지 않아요.
+
+| 요청 키 | 테이블 | 컬럼 | 충돌 기준 |
+|---|---|---|---|
+| `heart_rate` | `heart_rate_records` | `user_id`, `measured_at`, `bpm` | `user_id, measured_at` |
+| `blood_pressure` | `blood_pressure_records` | `user_id`, `measured_at`, `systolic`, `diastolic` | `user_id, measured_at` |
+| `oxygen` | `oxygen_records` | `user_id`, `measured_at`, `percentage` | `user_id, measured_at` |
+| `steps` | `steps_records` | `user_id`, `start_time`, `end_time`, `count` | `user_id, start_time, end_time` |
+| `sleep` | `sleep_records` | `user_id`, `start_time`, `end_time` | `user_id, start_time, end_time` |
 
 - 리포트 화면을 열 때마다 오늘 데이터를 다시 읽어요. `upsert`로 저장해서 같은 측정값이 중복으로 쌓이지 않아요.
-- 로그인한 사용자가 없으면 저장하지 않아요.
-- 걸음 수와 수면은 현재 화면에만 표시하고 DB에는 저장하지 않아요.
+- `user_id`는 보내지 않아요. 서버가 로그인 토큰으로 사용자를 정해요. 로그인하지 않았으면 서버가 401로 거절해요.
+- 걸음 수는 폰 시간 기준 오늘 0시~내일 0시 한 행으로, 다시 열 때마다 합계를 덮어써요.
 
 ### 네이티브 모듈 구성
 

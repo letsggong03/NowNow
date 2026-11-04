@@ -138,18 +138,18 @@ GET /reports/weekly/2026-10-12
 - 상세 화면에 무엇을 보여줄지(일별 점수 그래프, 원인 비율, AI 총평 등)는 **기획 협의가 필요**합니다. 일단 목록 API만 있어도 화면에 연결할 수 있습니다.
 - 주 시작은 **월요일**, 제목 규칙은 "목요일이 속한 달의 N째 주"로 앱이 계산합니다. 서버도 같은 기준이면 좋겠습니다.
 
-### 참고: 건강 원본 데이터 (앱 → DB, 이미 연결됨)
+### 참고: 건강 원본 데이터 (앱 → 백엔드 → DB, 연결됨)
 
-심박·혈압·산소포화도는 앱이 Health Connect에서 읽어 Supabase에 **직접 upsert**합니다([`ReportPage.tsx`](../src/screens/Report/ReportPage.tsx)). 1-1 스트레스 계산의 입력으로 쓰시면 됩니다.
+심박·혈압·산소포화도·걸음 수·수면은 앱이 Health Connect에서 읽어 `POST /api/health/records`로 보내고, 서버가 Supabase에 upsert합니다([`health.ts`](../src/services/api/health.ts)). 1-1 스트레스 계산의 입력으로 쓰시면 됩니다.
 
-| 테이블 | 컬럼 | upsert 기준 |
-| --- | --- | --- |
-| `heart_rate_records` | `user_id`, `measured_at`, `bpm` | `(user_id, measured_at)` |
-| `blood_pressure_records` | `user_id`, `measured_at`, `systolic`, `diastolic` | `(user_id, measured_at)` |
-| `oxygen_records` | `user_id`, `measured_at`, `percentage` | `(user_id, measured_at)` |
+| 요청 키 | 테이블 | 컬럼 | upsert 기준 |
+| --- | --- | --- | --- |
+| `heart_rate` | `heart_rate_records` | `user_id`, `measured_at`, `bpm` | `(user_id, measured_at)` |
+| `blood_pressure` | `blood_pressure_records` | `user_id`, `measured_at`, `systolic`, `diastolic` | `(user_id, measured_at)` |
+| `oxygen` | `oxygen_records` | `user_id`, `measured_at`, `percentage` | `(user_id, measured_at)` |
+| `steps` | `steps_records` | `user_id`, `start_time`, `end_time`, `count` | `(user_id, start_time, end_time)` |
+| `sleep` | `sleep_records` | `user_id`, `start_time`, `end_time` | `(user_id, start_time, end_time)` |
 
-- **걸음 수와 수면은 아직 저장하지 않습니다.** 앱 화면에는 표시되지만 DB에는 없습니다. 스트레스 점수 공식에 걸음·수면이 들어가므로 테이블이 필요합니다(앱 쪽 저장 코드는 제가 붙이겠습니다).
-  - 제안: `step_records(user_id, date, steps_total)`, `sleep_records(user_id, start_time, end_time, minutes)`
 - 에뮬레이터 개발 환경에서는 [`mockHealthData.ts`](../src/services/health/mockHealthData.ts) 목업을 화면에만 쓰고, DB에는 저장하지 않습니다.
 
 ---

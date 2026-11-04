@@ -1,4 +1,4 @@
-import {getCurrentUserId, request} from './client';
+import {request} from './client';
 
 export interface UserInformation {
   user_id: string;
@@ -30,11 +30,9 @@ export const login = (email: string, password: string) =>
   }>('POST', '/api/auth/login', {body: {email, password}, auth: false});
 
 export const getMe = async () => {
-  const user_id = await getCurrentUserId();
   const res = await request<{message: string; data: UserInformation}>(
     'GET',
     '/api/auth/me',
-    {query: {user_id}},
   );
   return res.data;
 };
@@ -42,10 +40,9 @@ export const getMe = async () => {
 export const updateMe = async (
   updates: Partial<Omit<UserInformation, 'user_id'>>,
 ) => {
-  const user_id = await getCurrentUserId();
   const res = await request<{message: string; data: UserInformation}>(
     'PATCH',
-    `/api/auth/me/${user_id}`,
+    '/api/auth/me',
     {body: updates},
   );
   return res.data;

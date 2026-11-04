@@ -1,6 +1,20 @@
 const meService = require("../services/meService");
 const { parseSettingsUpdate } = require("../utils/settings");
 
+// 가입 직후·첫 로그인 때 프로필 행이 없으면 만든다. 이미 있으면 그대로 둔다.
+async function ensureProfile(req, res) {
+  try {
+    await meService.ensureProfile(req.user);
+
+    res.json({ message: "프로필 확인 성공" });
+  } catch (error) {
+    res.status(500).json({
+      message: "프로필 확인 실패",
+      error: error.message
+    });
+  }
+}
+
 async function getSettings(req, res) {
   try {
     const data = await meService.getSettings(req.user.id);
@@ -102,6 +116,7 @@ async function deleteAccount(req, res) {
 }
 
 module.exports = {
+  ensureProfile,
   getSettings,
   updateSettings,
   savePushToken,

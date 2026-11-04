@@ -59,15 +59,7 @@ async function login(req, res) {
 
 async function getMyInfo(req, res) {
   try {
-    const { user_id } = req.query;
-
-    if (!user_id) {
-      return res.status(400).json({
-        message: "user_id가 필요합니다."
-      });
-    }
-
-    const data = await authService.getMyInfo(user_id);
+    const data = await authService.getMyInfo(req.user.id);
 
     res.json({
       message: "내 정보 조회 성공",
@@ -83,15 +75,7 @@ async function getMyInfo(req, res) {
 
 async function updateMyInfo(req, res) {
   try {
-    const { user_id } = req.params;
-
-    if (!user_id) {
-      return res.status(400).json({
-        message: "user_id가 필요합니다."
-      });
-    }
-
-    const data = await authService.updateMyInfo(user_id, req.body);
+    const data = await authService.updateMyInfo(req.user.id, req.body);
 
     res.json({
       message: "내 정보 수정 성공",

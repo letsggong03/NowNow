@@ -2,15 +2,18 @@ const reportService = require("../services/reportService");
 
 async function createReport(req, res) {
   try {
-    const { user_id, heart_rate, measured_at } = req.body;
+    const { heart_rate, measured_at } = req.body;
 
-    if (!user_id || !heart_rate || !measured_at) {
+    if (!heart_rate || !measured_at) {
       return res.status(400).json({
-        message: "user_id, heart_rate, measured_at이 필요합니다."
+        message: "heart_rate, measured_at이 필요합니다."
       });
     }
 
-    const data = await reportService.createReport(req.body);
+    const data = await reportService.createReport({
+      ...req.body,
+      user_id: req.user.id
+    });
 
     res.status(201).json({
       message: "리포트 생성 성공",
@@ -26,15 +29,7 @@ async function createReport(req, res) {
 
 async function getReports(req, res) {
   try {
-    const { user_id } = req.query;
-
-    if (!user_id) {
-      return res.status(400).json({
-        message: "user_id가 필요합니다."
-      });
-    }
-
-    const data = await reportService.getReportsByUser(user_id);
+    const data = await reportService.getReportsByUser(req.user.id);
 
     res.json({
       message: "리포트 목록 조회 성공",
@@ -52,7 +47,11 @@ async function getReportDetail(req, res) {
   try {
     const { health_record_id } = req.params;
 
-    const data = await reportService.getReportById(health_record_id);
+    const data = await reportService.getReportById(health_record_id, req.user.id);
+
+    if (!data) {
+      return res.status(404).json({ message: "리포트를 찾을 수 없습니다." });
+    }
 
     res.json({
       message: "리포트 상세 조회 성공",
@@ -69,15 +68,8 @@ async function getReportDetail(req, res) {
 async function deleteReport(req, res) {
   try {
     const { health_record_id } = req.params;
-    const { user_id } = req.body;
 
-    if (!user_id) {
-      return res.status(400).json({
-        message: "user_id가 필요합니다."
-      });
-    }
-
-    await reportService.deleteReport(health_record_id, user_id);
+    await reportService.deleteReport(health_record_id, req.user.id);
 
     res.json({
       message: "리포트 삭제 성공"

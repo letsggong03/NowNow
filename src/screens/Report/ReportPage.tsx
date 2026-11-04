@@ -14,7 +14,7 @@ import {useReport} from './hooks/useReport';
 import type {ReportTab} from './types';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
-import {supabase} from '../../services/supabase';
+import {saveHealthRecords} from '../../services/api/health';
 import {createMockHealthData} from '../../services/health/mockHealthData';
 
 const {HealthConnectModule} = NativeModules;
@@ -71,7 +71,10 @@ export default function ReportPage() {
         console.log('Health data:', data);
 
         setHealthData(data);
-        await saveRawHealthData(data);
+        // 실패해도 화면 표시는 계속하되, 서버·DB 문제를 알 수 있게 로그는 남긴다.
+        await saveHealthRecords(data).catch(error =>
+          console.log('[saveHealthRecords] 건강 기록 저장 실패:', error),
+        );
       } catch (e) {
         console.log('HealthConnect 에러:', e);
         if (__DEV__) setHealthData(createMockHealthData());
@@ -80,92 +83,6 @@ export default function ReportPage() {
 
     loadHealthData();
   }, []);
-
-  const saveRawHealthData = async (data: any) => {
-    const {
-      data: {user},
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    const userId = user.id;
-
-    // 실패해도 화면 표시는 계속하되, RLS·스키마 문제를 알 수 있게 로그는 남긴다.
-    const logSaveError = (table: string, error: {message: string} | null) => {
-      if (error) {
-        console.log(`[saveRawHealthData] ${table} 저장 실패:`, error.message);
-      }
-    };
-
-    if (data.heartRateSamples?.length > 0) {
-      const {error} = await supabase.from('heart_rate_records').upsert(
-        data.heartRateSamples.map((item: any) => ({
-          user_id: userId,
-          measured_at: item.time,
-          bpm: item.bpm,
-        })),
-        {onConflict: 'user_id,measured_at'},
-      );
-      logSaveError('heart_rate_records', error);
-    }
-
-    if (data.bloodPressureSamples?.length > 0) {
-      const {error} = await supabase.from('blood_pressure_records').upsert(
-        data.bloodPressureSamples.map((item: any) => ({
-          user_id: userId,
-          measured_at: item.time,
-          systolic: item.systolic,
-          diastolic: item.diastolic,
-        })),
-        {onConflict: 'user_id,measured_at'},
-      );
-      logSaveError('blood_pressure_records', error);
-    }
-
-    if (data.oxygenSamples?.length > 0) {
-      const {error} = await supabase.from('oxygen_records').upsert(
-        data.oxygenSamples.map((item: any) => ({
-          user_id: userId,
-          measured_at: item.time,
-          percentage: item.percentage,
-        })),
-        {onConflict: 'user_id,measured_at'},
-      );
-      logSaveError('oxygen_records', error);
-    }
-
-    // Health Connect는 걸음 수를 오늘 합계로만 준다(기기 간 중복 제거된 값).
-    // 하루 한 행(오늘 0시~내일 0시)으로 두고 다시 열 때마다 합계를 덮어쓴다.
-    if (typeof data.stepsTotal === 'number') {
-      const dayStart = new Date();
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
-
-      const {error} = await supabase.from('steps_records').upsert(
-        {
-          user_id: userId,
-          start_time: dayStart.toISOString(),
-          end_time: dayEnd.toISOString(),
-          count: data.stepsTotal,
-        },
-        {onConflict: 'user_id,start_time,end_time'},
-      );
-      logSaveError('steps_records', error);
-    }
-
-    if (data.sleepSessions?.length > 0) {
-      const {error} = await supabase.from('sleep_records').upsert(
-        data.sleepSessions.map((item: any) => ({
-          user_id: userId,
-          start_time: item.startTime,
-          end_time: item.endTime,
-        })),
-        {onConflict: 'user_id,start_time,end_time'},
-      );
-      logSaveError('sleep_records', error);
-    }
-  };
 
   return (
     <SafeAreaView
