@@ -11,6 +11,7 @@ import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import {withJosa} from '../../../utils/josa';
 import {preferenceLabels} from '../constants/preferenceOptions';
+import MusicRecommendation from './MusicRecommendation';
 import type {PreferenceKey, UserPreferences} from '../types';
 
 interface PreferencesCardProps {
@@ -66,6 +67,7 @@ export default function PreferencesCard({preferences}: PreferencesCardProps) {
               ))}
             </View>
           )}
+          {key === 'music' && <MusicRecommendation choice={value} />}
         </View>
       ))}
     </View>

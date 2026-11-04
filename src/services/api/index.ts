@@ -4,3 +4,4 @@ export * as chatApi from './chat';
 export * as reportApi from './reports';
 export * as communityApi from './community';
 export * as healthApi from './health';
+export * as musicApi from './music';

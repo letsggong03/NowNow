@@ -11,6 +11,7 @@ const moodRoutes = require("./routes/mood");
 const characterRoutes = require("./routes/character");
 const meRoutes = require("./routes/me");
 const healthRoutes = require("./routes/health");
+const musicRoutes = require("./routes/music");
 const { startDailyStressScheduler } = require("./jobs/dailyStressScheduler");
 
 const app = express();
@@ -28,6 +29,7 @@ app.use("/api/moods", moodRoutes);
 app.use("/api/character", characterRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/health", healthRoutes);
+app.use("/api/music", musicRoutes);
 
 app.get("/", (req, res) => {
   res.send("Node.js Supabase server is running");
