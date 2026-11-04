@@ -1,6 +1,6 @@
 import {useState} from 'react';
 
-import {pickRandomOptions} from '../constants/preferenceOptions';
+import {pickDailyOptions} from '../constants/preferenceOptions';
 import type {
   MoodType,
   PreferenceKey,
@@ -22,7 +22,7 @@ export const useCharacterHome = () => {
 
   const handleActionSelect = (action: PreferenceKey) => {
     setSelectedAction(action);
-    setCurrentOptions(pickRandomOptions(action));
+    setCurrentOptions(pickDailyOptions(action));
   };
 
   const handleOptionSelect = (choice: string) => {
