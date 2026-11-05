@@ -1,6 +1,7 @@
 package com.mibandtest
 
 import android.util.Log
+import android.os.Build
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.records.HeartRateRecord
@@ -31,6 +32,22 @@ class HealthConnectModule(
         return "HealthConnectModule"
     }
 
+    override fun getConstants(): Map<String, Any> {
+        val emulator = Build.MODEL.contains("sdk_gphone", ignoreCase = true) ||
+            Build.PRODUCT.startsWith("sdk") || Build.HARDWARE == "ranchu"
+        return mapOf("localApiHost" to if (emulator) "10.0.2.2" else "127.0.0.1")
+    }
+
+    @ReactMethod
+    fun requestHealthPermissions(promise: Promise) {
+        val activity = reactContext.currentActivity as? MainActivity
+        if (activity == null) {
+            promise.reject("NO_ACTIVITY", "앱 화면에서 다시 시도해 주세요.")
+            return
+        }
+        activity.runOnUiThread { activity.requestHealthPermissions(promise) }
+    }
+
     @ReactMethod
     fun getHealthData(promise: Promise) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -57,8 +74,9 @@ class HealthConnectModule(
                     )
                 )
 
-                val totalSteps = stepsResponse[StepsRecord.COUNT_TOTAL] ?: 0L
-                result.putDouble("stepsTotal", totalSteps.toDouble())
+                val totalSteps = stepsResponse[StepsRecord.COUNT_TOTAL]
+                if (totalSteps == null) result.putNull("stepsTotal")
+                else result.putDouble("stepsTotal", totalSteps.toDouble())
 
                 // 2. 오늘 심박수 목록 + 가장 최근 심박수
                 val heartRateResponse = client.readRecords(
@@ -184,8 +202,6 @@ class HealthConnectModule(
                 result.putString("latestSleepStartTime", latestSleepStartTime?.toString())
                 result.putString("latestSleepEndTime", latestSleepEndTime?.toString())
                 result.putArray("sleepSessions", sleepSessions)
-
-                Log.d("HEALTH_DATA", result.toString())
 
                 promise.resolve(result)
             } catch (e: Exception) {

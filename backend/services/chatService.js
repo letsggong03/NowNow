@@ -49,6 +49,11 @@ async function deleteMessage(chat_id, user_id) {
 }
 
 async function createSummary({ chat_id, user_id, summary, keywords = [] }) {
+  const { data: message, error: lookupError } = await supabase
+    .from("chat_messages").select("chat_id").eq("chat_id", chat_id)
+    .eq("user_id", user_id).maybeSingle();
+  if (lookupError) throw new Error(lookupError.message);
+  if (!message) throw Object.assign(new Error("본인의 채팅 기록을 찾을 수 없습니다."), { status: 404 });
   const { data, error } = await supabase
     .from("chat_summaries")
     .insert([

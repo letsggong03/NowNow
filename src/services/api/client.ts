@@ -1,9 +1,12 @@
-import {Platform} from 'react-native';
+import {NativeModules, Platform} from 'react-native';
 
 import {supabase} from '../supabase';
 
 // 안드로이드 에뮬레이터에서는 호스트 PC의 localhost가 10.0.2.2로 보인다.
-const DEV_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+// USB 연결 실기기는 adb reverse로 PC 서버에 접속한다.
+const DEV_HOST = Platform.OS === 'android'
+  ? NativeModules.HealthConnectModule?.localApiHost ?? '10.0.2.2'
+  : 'localhost';
 
 export const API_BASE_URL = `http://${DEV_HOST}:5000`;
 

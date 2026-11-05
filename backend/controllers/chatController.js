@@ -1,6 +1,8 @@
 const chatService = require("../services/chatService");
 const chatRelayService = require("../services/chatRelayService");
 const { createRateLimiter, parseChatRequest } = require("../utils/chatRelay");
+const { getContext } = require("../services/healthContextService");
+const { groundedPrompt } = require("../../shared/healthRetrieval");
 
 async function createMessage(req, res) {
   try {
@@ -102,8 +104,8 @@ async function createSummary(req, res) {
       data
     });
   } catch (error) {
-    res.status(500).json({
-      message: "채팅 요약 저장 실패",
+    res.status(error.status ?? 500).json({
+      message: error.status ? error.message : "채팅 요약 저장 실패",
       error: error.message
     });
   }
@@ -142,7 +144,12 @@ async function reply(req, res) {
       });
     }
 
-    const answer = await chatRelayService.requestReply(message, history);
+    let prompt = message;
+    if (req.body.useHealthContext === true) {
+      const context = await getContext(req.user.id, message).catch(() => null);
+      prompt = groundedPrompt(message, context);
+    }
+    const answer = await chatRelayService.requestReply(prompt, history);
 
     res.json({
       message: "AI 답변 성공",

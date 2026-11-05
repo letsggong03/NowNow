@@ -41,13 +41,22 @@ export const deleteChatMessage = async (chat_id: number) => {
   await request('DELETE', `/api/chat/messages/${chat_id}`);
 };
 
-export const saveChatSummary = async (chat_id: number, summary: string) => {
+export const saveChatSummary = async (chat_id: number, summary: string, keywords: string[] = []) => {
   const res = await request<{message: string; data: ChatSummaryRecord}>(
     'POST',
     '/api/chat/summary',
-    {body: {chat_id, summary}},
+    {body: {chat_id, summary, keywords}},
   );
   return res.data;
+};
+
+export type ChatTurn = {role: 'user' | 'assistant'; content: string};
+
+export const requestChatReply = async (message: string, history: ChatTurn[]) => {
+  const res = await request<{data: {reply: string}}>('POST', '/api/chat/reply', {
+    body: {message, history, useHealthContext: true},
+  });
+  return res.data.reply;
 };
 
 // created_at 최신순

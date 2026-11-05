@@ -4,6 +4,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import {format} from 'date-fns';
@@ -38,7 +39,7 @@ const formatChatDate = (date?: string) => {
 export default function ChatPage({date, onBack}: ChatPageProps) {
   const {theme} = useAppTheme();
   const scrollViewRef = useRef<ScrollView>(null);
-  const {messages, input, setInput, handleSend, handleButtonClick} =
+  const {messages, input, setInput, handleSend, handleButtonClick, error, busy} =
     useChatDiary();
 
   useEffect(() => {
@@ -72,6 +73,8 @@ export default function ChatPage({date, onBack}: ChatPageProps) {
             ))}
           </ScrollView>
 
+          {!!error && <Text accessibilityRole="alert" style={{color: theme.text}}>{error}</Text>}
+          {busy && <Text style={{color: theme.textMuted}}>뿡뿡이가 답변을 준비하고 있어요.</Text>}
           <ChatInput value={input} onChangeText={setInput} onSend={handleSend} />
         </View>
       </KeyboardAvoidingView>
