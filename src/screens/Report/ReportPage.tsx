@@ -76,7 +76,8 @@ export default function ReportPage() {
         if (requestPermissions) await HealthConnectModule.requestHealthPermissions();
         const data = await HealthConnectModule.getHealthData();
         setHealthData(data);
-        await saveHealthRecords(data).catch(() => setHealthStatus('건강 기록을 서버에 동기화하지 못했어요.'));
+        // 워치 혈압 연동을 검증할 때까지 혈압은 직접 입력으로만 저장한다.
+        await saveHealthRecords({...data, bloodPressureSamples: undefined}).catch(() => setHealthStatus('건강 기록을 서버에 동기화하지 못했어요.'));
       } catch {
         setHealthStatus('Health Connect의 데이터 읽기 권한을 확인해 주세요.');
       }
@@ -123,11 +124,7 @@ export default function ReportPage() {
     }
   };
 
-  const pressureByTime = new Map<number, (typeof bloodPressure)[number]>();
-  for (const row of [...bloodPressure, ...(healthData?.bloodPressureSamples ?? [])]) {
-    pressureByTime.set(Date.parse(row.time), row);
-  }
-  const pressureSamples = [...pressureByTime.values()].sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+  const pressureSamples = [...bloodPressure].sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
   const latestPressure = pressureSamples[pressureSamples.length - 1];
 
   return (
