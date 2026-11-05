@@ -1,18 +1,16 @@
 import React from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ScrollView, StyleSheet} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
-import CharacterMessage from './components/CharacterMessage';
-import CharacterPet from './components/CharacterPet';
+import CharacterStage from './components/CharacterStage';
 import InteractionButtons from './components/InteractionButtons';
-import MoodSelector from './components/MoodSelector';
 import PreferencesCard from './components/PreferencesCard';
+import StatusHud from './components/StatusHud';
 import {useCharacterHome} from './hooks/useCharacterHome';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
-import {shadows} from '../../theme/shadows';
 import {useAppTheme} from '../../theme/ThemeProvider';
 
-
+// 캐릭터 키우기 게임 느낌의 홈: 상태창 → 캐릭터 방 → 행동 버튼 → 오늘 함께한 것들
 export default function HomePage() {
   const {theme} = useAppTheme();
   const {
@@ -27,7 +25,6 @@ export default function HomePage() {
     handleCancelOptions,
   } = useCharacterHome();
 
-
   return (
     <SafeAreaView
       style={[styles.safeArea, {backgroundColor: theme.background}]}
@@ -35,22 +32,17 @@ export default function HomePage() {
       <ScrollView
         alwaysBounceVertical
         keyboardShouldPersistTaps="handled"
-        scrollEnabled
         style={[styles.container, {backgroundColor: theme.background}]}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        <View style={[styles.moodSection, {backgroundColor: theme.surface}]}>
-          <Text style={[styles.title, {color: theme.text}]}>
-            오늘 기분은 어떠세요?
-          </Text>
-          <MoodSelector selectedMood={userMood} onMoodChange={setUserMood} />
-        </View>
+        <StatusHud
+          preferences={userPreferences}
+          mood={userMood}
+          onMoodChange={setUserMood}
+        />
 
-        <View style={[styles.petCard, {backgroundColor: theme.background}]}>
-          <CharacterPet mood={userMood} isInteracting={isInteracting} />
-        </View>
+        <CharacterStage mood={userMood} isInteracting={isInteracting} />
 
-        <CharacterMessage userMood={userMood} />
         <InteractionButtons
           selectedAction={selectedAction}
           options={currentOptions}
@@ -76,26 +68,7 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: SCREEN_BOTTOM_INSET,
     paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
-    paddingTop: 16,
+    paddingTop: 12,
     rowGap: 14,
-  },
-  moodSection: {
-    ...shadows.card,
-    borderRadius: 22,
-    padding: 12,
-    rowGap: 11,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '800',
-    paddingTop: 4,
-    textAlign: 'center',
-  },
-  petCard: {
-    alignItems: 'center',
-    borderRadius: 22,
-    minHeight: 252,
-    justifyContent: 'center',
-    paddingVertical: 34,
   },
 });

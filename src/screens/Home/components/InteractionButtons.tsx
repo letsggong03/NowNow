@@ -17,6 +17,12 @@ interface InteractionButtonsProps {
   onCancelOptions: () => void;
 }
 
+// 버튼 아래 입체 테두리 두께. 누르면 그만큼 내려가 눌린 느낌을 준다.
+const BUTTON_DEPTH = 5;
+
+const actionStyle = (key: PreferenceKey) =>
+  interactionActions.find(action => action.key === key)!;
+
 export default function InteractionButtons({
   selectedAction,
   options,
@@ -31,7 +37,7 @@ export default function InteractionButtons({
   useEffect(() => {
     transitionAnim.setValue(0);
     Animated.spring(transitionAnim, {
-      friction: 8,
+      friction: 7,
       tension: 90,
       toValue: 1,
       useNativeDriver: true,
@@ -47,16 +53,12 @@ export default function InteractionButtons({
           outputRange: [14, 0],
         }),
       },
-      {
-        scale: transitionAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.98, 1],
-        }),
-      },
     ],
   };
 
   if (selectedAction) {
+    const {emoji, color, shade} = actionStyle(selectedAction);
+
     return (
       <Animated.View
         style={[
@@ -69,12 +71,13 @@ export default function InteractionButtons({
             onPress={onCancelOptions}
             style={({pressed}) => [
               styles.backButton,
-              pressed && styles.pressedButton,
+              {backgroundColor: theme.surfaceMuted},
+              pressed && styles.pressedSoft,
             ]}>
             <ChevronLeft color={theme.icon} size={18} />
           </Pressable>
           <Text style={[styles.optionTitle, {color: theme.text}]}>
-            {preferenceLabels[selectedAction]} 취향 고르기
+            {emoji} 오늘은 어떤 {preferenceLabels[selectedAction]}?
           </Text>
         </View>
 
@@ -83,16 +86,17 @@ export default function InteractionButtons({
             key={option.label}
             onPress={() => onOptionSelect(option.label)}
             style={({pressed}) => [
-              styles.optionButton,
-              {backgroundColor: theme.surfaceMuted, borderColor: theme.border},
-              pressed && styles.pressedButton,
+              styles.optionCard,
+              {backgroundColor: color, borderBottomColor: shade},
+              pressed && styles.pressedDepth,
             ]}>
-            <Text style={[styles.optionLabel, {color: theme.text}]}>
-              {option.label}
-            </Text>
-            <Text style={[styles.optionDescription, {color: theme.textMuted}]}>
-              {option.description}
-            </Text>
+            <View style={styles.optionEmojiWrap}>
+              <Text style={styles.optionEmoji}>{emoji}</Text>
+            </View>
+            <View style={styles.optionText}>
+              <Text style={styles.optionLabel}>{option.label}</Text>
+              <Text style={styles.optionDescription}>{option.description}</Text>
+            </View>
           </Pressable>
         ))}
       </Animated.View>
@@ -100,32 +104,39 @@ export default function InteractionButtons({
   }
 
   return (
-    <Animated.View style={[styles.grid, animatedStyle]}>
-      {interactionActions.map(({key, label, Icon}) => {
+    <Animated.View style={[styles.dock, animatedStyle]}>
+      {interactionActions.map(({key, label, emoji, color, shade}) => {
         const completed = Boolean(completedPreferences[key]);
 
         return (
-          <Pressable
-            key={key}
-            disabled={completed}
-            onPress={() => onActionSelect(key)}
-            style={({pressed}) => [
-              styles.button,
-              {backgroundColor: theme.surface},
-              completed && styles.completedButton,
-              completed && {backgroundColor: theme.surfaceMuted},
-              pressed && !completed && styles.pressedButton,
-            ]}>
-            <Icon color={completed ? theme.textMuted : theme.icon} size={24} />
+          <View key={key} style={styles.dockItem}>
+            <Pressable
+              disabled={completed}
+              onPress={() => onActionSelect(key)}
+              style={({pressed}) => [
+                styles.actionButton,
+                {backgroundColor: color, borderBottomColor: shade},
+                completed && styles.completedButton,
+                pressed && styles.pressedDepth,
+              ]}>
+              <Text style={[styles.actionEmoji, completed && styles.completedEmoji]}>
+                {emoji}
+              </Text>
+              {completed && (
+                <View style={[styles.doneBadge, {backgroundColor: theme.accent}]}>
+                  <Text style={styles.doneMark}>✓</Text>
+                </View>
+              )}
+            </Pressable>
             <Text
+              numberOfLines={1}
               style={[
-                styles.label,
-                {color: theme.text},
-                completed && {color: theme.textMuted},
+                styles.actionLabel,
+                {color: completed ? theme.textMuted : theme.text},
               ]}>
               {completed ? completedMessages[key] : label}
             </Text>
-          </Pressable>
+          </View>
         );
       })}
     </Animated.View>
@@ -133,37 +144,66 @@ export default function InteractionButtons({
 }
 
 const styles = StyleSheet.create({
-  grid: {
+  dock: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
   },
-  button: {
+  dockItem: {
+    alignItems: 'center',
+    rowGap: 6,
+    width: '23%',
+  },
+  actionButton: {
     ...shadows.raised,
     alignItems: 'center',
-    borderRadius: 18,
-    flexBasis: '47%',
-    flexDirection: 'row',
-    gap: 9,
-    minHeight: 58,
+    aspectRatio: 1,
+    borderBottomWidth: BUTTON_DEPTH,
+    borderRadius: 26,
     justifyContent: 'center',
+    width: '100%',
   },
+  // 완료한 버튼은 바탕을 평평하게 눌러 두고 아이콘만 흐리게 해서 ✓ 표시는 또렷하게 남긴다.
   completedButton: {
-    shadowOpacity: 0,
-    elevation: 0,
+    borderBottomWidth: 1,
+    marginTop: BUTTON_DEPTH - 1,
   },
-  pressedButton: {
+  completedEmoji: {
+    opacity: 0.45,
+  },
+  pressedDepth: {
+    borderBottomWidth: 1,
+    marginTop: BUTTON_DEPTH - 1,
+  },
+  pressedSoft: {
     opacity: 0.72,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
+  actionEmoji: {
+    fontSize: 34,
+  },
+  doneBadge: {
+    alignItems: 'center',
+    borderRadius: 11,
+    height: 22,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: -4,
+    top: -4,
+    width: 22,
+  },
+  doneMark: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  actionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   optionPanel: {
     ...shadows.raised,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 12,
-    rowGap: 9,
+    rowGap: 10,
   },
   optionHeader: {
     alignItems: 'center',
@@ -172,30 +212,50 @@ const styles = StyleSheet.create({
   },
   backButton: {
     alignItems: 'center',
-    borderRadius: 18,
-    height: 30,
+    borderRadius: 16,
+    height: 32,
     justifyContent: 'center',
-    width: 30,
+    width: 32,
   },
   optionTitle: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    marginRight: 30,
+    fontSize: 15,
+    fontWeight: '800',
+    marginRight: 32,
     textAlign: 'center',
   },
-  optionButton: {
-    borderRadius: 17,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+  optionCard: {
+    alignItems: 'center',
+    borderBottomWidth: BUTTON_DEPTH,
+    borderRadius: 18,
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
+  optionEmojiWrap: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: 16,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  optionEmoji: {
+    fontSize: 24,
+  },
+  optionText: {
+    flex: 1,
+  },
+  // 버튼 바탕이 늘 밝은 파스텔이라 다크 모드에서도 진한 글씨를 쓴다.
   optionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#2F352F',
+    fontSize: 15,
+    fontWeight: '800',
   },
   optionDescription: {
+    color: '#5C6459',
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 2,
   },
 });

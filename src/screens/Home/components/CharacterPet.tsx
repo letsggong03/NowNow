@@ -1,5 +1,5 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, StyleSheet, View} from 'react-native';
+import {Animated, StyleSheet} from 'react-native';
 
 import type {MoodType} from '../types';
 
@@ -8,11 +8,35 @@ interface CharacterPetProps {
   isInteracting: boolean;
 }
 
+// 캐릭터 그림. 팀원이 새 캐릭터 파일을 주면 이 파일만 바꾸면 된다.
 const characterImage = require('../../../assets/images/charactor.png');
+
+const IDLE_DURATION = 1400;
 
 export default function CharacterPet({isInteracting}: CharacterPetProps) {
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const bounceDirectionRef = useRef(-1);
+  // 가만히 있을 때도 숨 쉬듯 살짝 커졌다 작아진다.
+  const idleAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const breathing = Animated.loop(
+      Animated.sequence([
+        Animated.timing(idleAnim, {
+          duration: IDLE_DURATION,
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+        Animated.timing(idleAnim, {
+          duration: IDLE_DURATION,
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    breathing.start();
+    return () => breathing.stop();
+  }, [idleAnim]);
 
   useEffect(() => {
     if (!isInteracting) {
@@ -66,7 +90,26 @@ export default function CharacterPet({isInteracting}: CharacterPetProps) {
   });
 
   return (
-    <View style={styles.stage}>
+    <Animated.View
+      style={[
+        styles.stage,
+        {
+          transform: [
+            {
+              scaleY: idleAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.035],
+              }),
+            },
+            {
+              translateY: idleAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -3],
+              }),
+            },
+          ],
+        },
+      ]}>
       <Animated.Image
         source={characterImage}
         resizeMode="contain"
@@ -77,19 +120,19 @@ export default function CharacterPet({isInteracting}: CharacterPetProps) {
           },
         ]}
       />
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   stage: {
     alignItems: 'center',
-    height: 190,
-    justifyContent: 'center',
+    height: 170,
+    justifyContent: 'flex-end',
     width: '100%',
   },
   character: {
-    height: 168,
-    width: 168,
+    height: 160,
+    width: 160,
   },
 });
