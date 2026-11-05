@@ -11,9 +11,9 @@ import {
   LayoutChangeEvent,
   Linking,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import Text from '../components/AppText';
 
 import {useKeyboardVisible} from '../hooks/useKeyboardVisible';
 import ChatPage from '../screens/Chat/ChatPage';
