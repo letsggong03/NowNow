@@ -1,6 +1,7 @@
 import React from 'react';
 import {ChevronRight} from 'lucide-react-native';
-import {Pressable, StyleSheet, Text} from 'react-native';
+import {Pressable, StyleSheet} from 'react-native';
+import Text from '../../../components/AppText';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 
 interface Props {

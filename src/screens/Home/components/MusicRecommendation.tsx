@@ -6,12 +6,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import {Play} from 'lucide-react-native';
 
+import Text from '../../../components/AppText';
 import {
   getMusicRecommendations,
   type MusicTrack,
@@ -119,7 +119,7 @@ export default function MusicRecommendation({choice}: MusicRecommendationProps) 
     <View
       style={styles.wrap}
       onLayout={event => setPlayerWidth(event.nativeEvent.layout.width)}>
-      <Text style={[styles.heading, {color: theme.text}]}>🎧 오늘의 추천곡</Text>
+      <Text style={[styles.heading, {color: theme.text}]}>오늘의 추천곡</Text>
 
       {/* 유튜브 규칙상 영상 화면이 보이는 플레이어로 재생한다. 재생은 플레이어 버튼을 눌러서 시작된다. */}
       {selected && playerWidth > 0 && (
@@ -162,13 +162,11 @@ export default function MusicRecommendation({choice}: MusicRecommendationProps) 
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: 6,
-    marginTop: 8,
     rowGap: 10,
   },
   heading: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   player: {
     borderRadius: 14,
@@ -223,7 +221,7 @@ const styles = StyleSheet.create({
   },
   songTitle: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     marginTop: 8,
   },
   artist: {

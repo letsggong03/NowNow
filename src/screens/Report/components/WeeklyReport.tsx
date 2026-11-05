@@ -1,5 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {BackHandler, Pressable, StyleSheet, Text, View} from 'react-native';
+import {BackHandler, Pressable, StyleSheet, View} from 'react-native';
+import Text from '../../../components/AppText';
 import {ChevronLeft} from 'lucide-react-native';
 import {format, parseISO} from 'date-fns';
 

@@ -1,6 +1,7 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, StyleSheet, Text, View} from 'react-native';
+import {Animated, StyleSheet, View} from 'react-native';
 
+import Text from '../../../components/AppText';
 import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import {characterMessages} from '../constants/homeContent';
@@ -59,15 +60,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bubble: {
-    ...shadows.raised,
+    ...shadows.subtle,
     borderRadius: 18,
     paddingHorizontal: 18,
     paddingVertical: 10,
   },
   message: {
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 21,
     textAlign: 'center',
   },
   tail: {

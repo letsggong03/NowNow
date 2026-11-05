@@ -1,5 +1,6 @@
 import { StyleSheet } from "react-native";
 
+import { FONT_FAMILY } from "../../components/AppText";
 import type { AppTheme } from "../../theme/ThemeProvider";
 
 export const createAuthStyles = (theme: AppTheme) =>
@@ -20,6 +21,7 @@ export const createAuthStyles = (theme: AppTheme) =>
     },
 
     input: {
+      fontFamily: FONT_FAMILY,
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 10,

@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {ScrollView, StyleSheet, NativeModules, View, Text} from 'react-native';
+import {ScrollView, StyleSheet, NativeModules, View} from 'react-native';
+import Text from '../../components/AppText';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {Activity, Footprints, HeartPulse, Moon} from 'lucide-react-native';

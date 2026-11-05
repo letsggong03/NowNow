@@ -127,12 +127,12 @@ export default function CharacterPet({isInteracting}: CharacterPetProps) {
 const styles = StyleSheet.create({
   stage: {
     alignItems: 'center',
-    height: 170,
+    height: 210,
     justifyContent: 'flex-end',
     width: '100%',
   },
   character: {
-    height: 160,
-    width: 160,
+    height: 200,
+    width: 200,
   },
 });

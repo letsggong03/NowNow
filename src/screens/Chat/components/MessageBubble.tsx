@@ -1,5 +1,6 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, Pressable, StyleSheet, Text, View} from 'react-native';
+import {Animated, Pressable, StyleSheet, View} from 'react-native';
+import Text from '../../../components/AppText';
 
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import type {ChatAction, Message} from '../types';

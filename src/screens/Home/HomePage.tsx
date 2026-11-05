@@ -1,5 +1,5 @@
 import React from 'react';
-import {ScrollView, StyleSheet} from 'react-native';
+import {ScrollView, StyleSheet, useWindowDimensions} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import CharacterStage from './components/CharacterStage';
@@ -10,9 +10,17 @@ import {useCharacterHome} from './hooks/useCharacterHome';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
 
-// 캐릭터 키우기 게임 느낌의 홈: 상태창 → 캐릭터 방 → 행동 버튼 → 오늘 함께한 것들
+// 상태창·행동 버튼·오늘 고른 것·탭바가 차지하는 높이. 나머지를 캐릭터 방에 준다.
+const HOME_CHROME_HEIGHT = 390;
+// 선택지가 열리면 행동 버튼보다 높아서 방을 그만큼 줄인다.
+const HOME_CHROME_HEIGHT_OPTIONS = 580;
+const ROOM_MIN_HEIGHT = 320;
+const ROOM_MAX_HEIGHT = 500;
+
+// 캐릭터 키우기 게임 느낌의 홈: 상태창 → 캐릭터 방 → 행동 버튼 → 오늘 고른 것
 export default function HomePage() {
   const {theme} = useAppTheme();
+  const {height: windowHeight} = useWindowDimensions();
   const {
     userMood,
     setUserMood,
@@ -24,6 +32,13 @@ export default function HomePage() {
     handleOptionSelect,
     handleCancelOptions,
   } = useCharacterHome();
+  const chromeHeight = selectedAction
+    ? HOME_CHROME_HEIGHT_OPTIONS
+    : HOME_CHROME_HEIGHT;
+  const roomHeight = Math.min(
+    ROOM_MAX_HEIGHT,
+    Math.max(ROOM_MIN_HEIGHT, windowHeight - chromeHeight),
+  );
 
   return (
     <SafeAreaView
@@ -41,7 +56,11 @@ export default function HomePage() {
           onMoodChange={setUserMood}
         />
 
-        <CharacterStage mood={userMood} isInteracting={isInteracting} />
+        <CharacterStage
+          mood={userMood}
+          isInteracting={isInteracting}
+          height={roomHeight}
+        />
 
         <InteractionButtons
           selectedAction={selectedAction}
@@ -69,6 +88,6 @@ const styles = StyleSheet.create({
     paddingBottom: SCREEN_BOTTOM_INSET,
     paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: 12,
-    rowGap: 14,
+    rowGap: 12,
   },
 });

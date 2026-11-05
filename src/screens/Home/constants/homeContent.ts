@@ -12,19 +12,15 @@ export const characterMessages: Record<MoodType, string> = {
   happy: '기분이 좋아 보여서 나도 좋아!\n오늘 좋은 일이 있었어?',
 };
 
-// 행동 버튼과 상태 게이지에 쓰는 아이콘(이모지)·색. color는 버튼 바탕, shade는 버튼 아래 입체 테두리.
 export const interactionActions: {
   key: PreferenceKey;
   label: string;
   emoji: string;
-  gauge: string;
-  color: string;
-  shade: string;
 }[] = [
-  {key: 'feed', label: '먹이', emoji: '🍙', gauge: '배부름', color: '#FFE2C4', shade: '#F2B98A'},
-  {key: 'play', label: '놀이', emoji: '🎾', gauge: '즐거움', color: '#D6EBFF', shade: '#9CC6EE'},
-  {key: 'music', label: '음악', emoji: '🎧', gauge: '흥', color: '#EADDFB', shade: '#C2A9EA'},
-  {key: 'hobby', label: '휴식', emoji: '🛁', gauge: '휴식', color: '#D5F1DF', shade: '#97D2AE'},
+  {key: 'feed', label: '먹이', emoji: '🍙'},
+  {key: 'play', label: '놀이', emoji: '🎾'},
+  {key: 'music', label: '음악', emoji: '🎧'},
+  {key: 'hobby', label: '휴식', emoji: '🛁'},
 ];
 
 export const completedMessages: Record<PreferenceKey, string> = {

@@ -1,6 +1,7 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, StyleSheet, Text, View} from 'react-native';
+import {Animated, StyleSheet, View} from 'react-native';
 
+import Text from '../../../components/AppText';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import type {MoodType} from '../types';
 import CharacterMessage from './CharacterMessage';
@@ -9,12 +10,13 @@ import CharacterPet from './CharacterPet';
 interface CharacterStageProps {
   mood: MoodType;
   isInteracting: boolean;
+  height: number;
 }
 
 // 방 색. 다크 모드에서는 어둡게 바꾼다.
 const ROOM = {
-  light: {wall: '#FFF7EC', floor: '#F6E4CB', shadow: '#E9CFAE'},
-  dark: {wall: '#2C2A26', floor: '#3A352D', shadow: '#2A251F'},
+  light: {wall: '#F8FBF5', floor: '#DCEBD2', shadow: '#C3D8B6', sky: '#E4F1F6'},
+  dark: {wall: '#252722', floor: '#30332D', shadow: '#1E201B', sky: '#2E3A40'},
 };
 
 // 돌봐 주면 떠오르는 하트 (가로 위치, 늦게 출발하는 정도)
@@ -25,7 +27,11 @@ const HEARTS = [
 ];
 
 // 캐릭터가 사는 방: 벽·바닥·장식, 말풍선, 캐릭터, 하트 효과
-export default function CharacterStage({mood, isInteracting}: CharacterStageProps) {
+export default function CharacterStage({
+  mood,
+  isInteracting,
+  height,
+}: CharacterStageProps) {
   const {theme} = useAppTheme();
   const room = ROOM[theme.mode];
   const heartAnims = useRef(HEARTS.map(() => new Animated.Value(0))).current;
@@ -47,13 +53,14 @@ export default function CharacterStage({mood, isInteracting}: CharacterStageProp
   }, [heartAnims, isInteracting]);
 
   return (
-    <View style={[styles.room, {backgroundColor: room.wall}]}>
-      {/* 장식: 창문과 반짝이 */}
-      <View style={[styles.window, {borderColor: room.floor}]}>
+    <View style={[styles.room, {backgroundColor: room.wall, height}]}>
+      <View
+        style={[
+          styles.window,
+          {backgroundColor: room.sky, borderColor: room.floor},
+        ]}>
         <Text style={styles.windowSky}>☁️</Text>
       </View>
-      <Text style={[styles.sparkle, styles.sparkleLeft]}>✨</Text>
-      <Text style={[styles.sparkle, styles.sparkleRight]}>⭐</Text>
 
       <View style={[styles.floor, {backgroundColor: room.floor}]}>
         <Text style={styles.plant}>🪴</Text>
@@ -110,34 +117,21 @@ const styles = StyleSheet.create({
   },
   window: {
     alignItems: 'center',
-    backgroundColor: '#D9EEFF',
     borderRadius: 14,
-    borderWidth: 5,
+    borderWidth: 4,
     height: 64,
     justifyContent: 'center',
     left: 18,
     position: 'absolute',
-    top: 100,
+    top: 104,
     width: 72,
   },
   windowSky: {
     fontSize: 24,
   },
-  sparkle: {
-    fontSize: 16,
-    position: 'absolute',
-  },
-  sparkleLeft: {
-    left: 22,
-    top: 30,
-  },
-  sparkleRight: {
-    right: 24,
-    top: 28,
-  },
   floor: {
     bottom: 0,
-    height: 74,
+    height: '28%',
     left: 0,
     position: 'absolute',
     right: 0,
@@ -150,6 +144,8 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
     paddingBottom: 18,
   },
   characterArea: {

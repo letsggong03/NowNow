@@ -3,9 +3,9 @@ import {
   Animated,
   type LayoutChangeEvent,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import Text from '../../../components/AppText';
 import Svg, {Circle, Line, Path, Text as SvgText} from 'react-native-svg';
 import {format, parseISO} from 'date-fns';
 import {ko} from 'date-fns/locale';

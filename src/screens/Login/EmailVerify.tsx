@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
+import Text from "../../components/AppText";
 
 import { useAppTheme, type AppTheme } from "../../theme/ThemeProvider";
 import { createAuthStyles } from "./authStyles";

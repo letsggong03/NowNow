@@ -1,7 +1,8 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, Pressable, StyleSheet, Text, View} from 'react-native';
-import {ChevronLeft} from 'lucide-react-native';
+import {Animated, Pressable, StyleSheet, View} from 'react-native';
+import {Check, ChevronLeft} from 'lucide-react-native';
 
+import Text from '../../../components/AppText';
 import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import {completedMessages, interactionActions} from '../constants/homeContent';
@@ -18,10 +19,7 @@ interface InteractionButtonsProps {
 }
 
 // 버튼 아래 입체 테두리 두께. 누르면 그만큼 내려가 눌린 느낌을 준다.
-const BUTTON_DEPTH = 5;
-
-const actionStyle = (key: PreferenceKey) =>
-  interactionActions.find(action => action.key === key)!;
+const BUTTON_DEPTH = 4;
 
 export default function InteractionButtons({
   selectedAction,
@@ -57,8 +55,6 @@ export default function InteractionButtons({
   };
 
   if (selectedAction) {
-    const {emoji, color, shade} = actionStyle(selectedAction);
-
     return (
       <Animated.View
         style={[
@@ -77,7 +73,7 @@ export default function InteractionButtons({
             <ChevronLeft color={theme.icon} size={18} />
           </Pressable>
           <Text style={[styles.optionTitle, {color: theme.text}]}>
-            {emoji} 오늘은 어떤 {preferenceLabels[selectedAction]}?
+            오늘은 어떤 {preferenceLabels[selectedAction]}?
           </Text>
         </View>
 
@@ -87,16 +83,15 @@ export default function InteractionButtons({
             onPress={() => onOptionSelect(option.label)}
             style={({pressed}) => [
               styles.optionCard,
-              {backgroundColor: color, borderBottomColor: shade},
+              {backgroundColor: theme.surfaceMuted, borderBottomColor: theme.nav},
               pressed && styles.pressedDepth,
             ]}>
-            <View style={styles.optionEmojiWrap}>
-              <Text style={styles.optionEmoji}>{emoji}</Text>
-            </View>
-            <View style={styles.optionText}>
-              <Text style={styles.optionLabel}>{option.label}</Text>
-              <Text style={styles.optionDescription}>{option.description}</Text>
-            </View>
+            <Text style={[styles.optionLabel, {color: theme.text}]}>
+              {option.label}
+            </Text>
+            <Text style={[styles.optionDescription, {color: theme.textMuted}]}>
+              {option.description}
+            </Text>
           </Pressable>
         ))}
       </Animated.View>
@@ -105,7 +100,7 @@ export default function InteractionButtons({
 
   return (
     <Animated.View style={[styles.dock, animatedStyle]}>
-      {interactionActions.map(({key, label, emoji, color, shade}) => {
+      {interactionActions.map(({key, label, emoji}) => {
         const completed = Boolean(completedPreferences[key]);
 
         return (
@@ -115,8 +110,9 @@ export default function InteractionButtons({
               onPress={() => onActionSelect(key)}
               style={({pressed}) => [
                 styles.actionButton,
-                {backgroundColor: color, borderBottomColor: shade},
+                {backgroundColor: theme.surface, borderBottomColor: theme.nav},
                 completed && styles.completedButton,
+                completed && {backgroundColor: theme.surfaceMuted},
                 pressed && styles.pressedDepth,
               ]}>
               <Text style={[styles.actionEmoji, completed && styles.completedEmoji]}>
@@ -124,7 +120,7 @@ export default function InteractionButtons({
               </Text>
               {completed && (
                 <View style={[styles.doneBadge, {backgroundColor: theme.accent}]}>
-                  <Text style={styles.doneMark}>✓</Text>
+                  <Check color={theme.accentText} size={12} strokeWidth={3.5} />
                 </View>
               )}
             </Pressable>
@@ -154,21 +150,22 @@ const styles = StyleSheet.create({
     width: '23%',
   },
   actionButton: {
-    ...shadows.raised,
+    ...shadows.subtle,
     alignItems: 'center',
     aspectRatio: 1,
     borderBottomWidth: BUTTON_DEPTH,
-    borderRadius: 26,
+    borderRadius: 22,
     justifyContent: 'center',
     width: '100%',
   },
-  // 완료한 버튼은 바탕을 평평하게 눌러 두고 아이콘만 흐리게 해서 ✓ 표시는 또렷하게 남긴다.
+  // 완료한 버튼은 평평하게 눌러 두고 아이콘만 흐리게 해서 체크 표시는 또렷하게 남긴다.
   completedButton: {
-    borderBottomWidth: 1,
-    marginTop: BUTTON_DEPTH - 1,
+    borderBottomWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   completedEmoji: {
-    opacity: 0.45,
+    opacity: 0.4,
   },
   pressedDepth: {
     borderBottomWidth: 1,
@@ -178,32 +175,27 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   actionEmoji: {
-    fontSize: 34,
+    fontSize: 30,
   },
   doneBadge: {
     alignItems: 'center',
-    borderRadius: 11,
-    height: 22,
+    borderRadius: 10,
+    height: 20,
     justifyContent: 'center',
     position: 'absolute',
-    right: -4,
-    top: -4,
-    width: 22,
-  },
-  doneMark: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
+    right: -3,
+    top: -3,
+    width: 20,
   },
   actionLabel: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   optionPanel: {
-    ...shadows.raised,
-    borderRadius: 24,
+    ...shadows.subtle,
+    borderRadius: 22,
     padding: 12,
-    rowGap: 10,
+    rowGap: 8,
   },
   optionHeader: {
     alignItems: 'center',
@@ -220,42 +212,22 @@ const styles = StyleSheet.create({
   optionTitle: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     marginRight: 32,
     textAlign: 'center',
   },
   optionCard: {
-    alignItems: 'center',
     borderBottomWidth: BUTTON_DEPTH,
-    borderRadius: 18,
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  optionEmojiWrap: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.7)',
     borderRadius: 16,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
   },
-  optionEmoji: {
-    fontSize: 24,
-  },
-  optionText: {
-    flex: 1,
-  },
-  // 버튼 바탕이 늘 밝은 파스텔이라 다크 모드에서도 진한 글씨를 쓴다.
   optionLabel: {
-    color: '#2F352F',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   optionDescription: {
-    color: '#5C6459',
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 3,
   },
 });
