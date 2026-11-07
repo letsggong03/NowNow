@@ -15,7 +15,7 @@ const {
   summarizeDays
 } = require("./insightCalculator");
 
-const PERIOD_DAYS = { week: 7, month: 30 };
+const PERIOD_DAYS = { day: 1, yesterday: 1, week: 7, month: 30 };
 
 // from ~ to(포함) 사이에 저장된 챗봇 요약의 키워드
 function getSummaries(user_id, from, to) {
@@ -33,11 +33,11 @@ function getSummaries(user_id, from, to) {
 
 // 최근 7일(week) 또는 30일(month), 오늘 포함
 async function getStressCauses(user_id, period) {
-  const to = kstToday();
+  const to = period === 'yesterday' ? addDays(kstToday(), -1) : kstToday();
   const from = addDays(to, -(PERIOD_DAYS[period] - 1));
   const summaries = await getSummaries(user_id, from, to);
 
-  return { period, from, to, causes: countCauses(summaries) };
+  return { period, from, to, causes: countCauses(summaries, true) };
 }
 
 // 그날 점수 + 그날까지 최근 7일 대화의 가장 큰 원인
@@ -84,7 +84,7 @@ async function getWeeklyReports(user_id, limit) {
       days.filter(day => inWeek(day.date))
     );
     const [topCause] = countCauses(
-      summaries.filter(row => inWeek(kstDateOf(row.created_at)))
+      summaries.filter(row => inWeek(kstDateOf(row.created_at))), true
     );
 
     return {
@@ -109,7 +109,7 @@ async function getWeeklyReport(user_id, weekStart) {
     stressService.getDailyStressRange(user_id, weekStart, to),
     getSummaries(user_id, weekStart, to)
   ]);
-  const causes = countCauses(summaries);
+  const causes = countCauses(summaries, true);
 
   return {
     weekStart,

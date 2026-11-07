@@ -9,12 +9,14 @@ import ReportCard from './ReportCard';
 
 interface StressCauseCardProps {
   causes: StressCause[];
+  unavailable?: boolean;
   period: StressPeriod;
   onPeriodChange: (period: StressPeriod) => void;
 }
 
 export default function StressCauseCard({
   causes,
+  unavailable,
   period,
   onPeriodChange,
 }: StressCauseCardProps) {
@@ -31,7 +33,7 @@ export default function StressCauseCard({
             <TrendingUp color={theme.icon} size={20} />
           </View>
           <Text style={[styles.title, {color: theme.text}]}>
-            스트레스 원인 분석
+            {period === 'day' ? '오늘의 스트레스 원인 키워드' : '어제의 스트레스 원인 키워드'}
           </Text>
         </View>
         <View style={[styles.toggle, {backgroundColor: theme.surfaceMuted}]}>
@@ -55,12 +57,12 @@ export default function StressCauseCard({
         </View>
       </View>
 
-      <Text style={[styles.count, {color: theme.text}]}>
+      {causes.length ? <Text style={[styles.count, {color: theme.text}]}>
         {totalCount}
         <Text style={[styles.countUnit, {color: theme.textMuted}]}>
-          건의 스트레스 기록
+          회의 키워드 언급
         </Text>
-      </Text>
+      </Text> : <Text style={{color: theme.textMuted}}>{unavailable ? '키워드 기록을 불러오지 못했어요.' : '뿡뿡이와 하루를 정리하고 키워드를 저장하면 여기에 보여요.'}</Text>}
 
       <View style={styles.causes}>
         {causes.map((item, index) => (

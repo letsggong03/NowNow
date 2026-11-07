@@ -13,11 +13,13 @@ export const reportTabs: {key: ReportTab; label: string}[] = [
 ];
 
 export const stressPeriodOptions: {key: StressPeriod; label: string}[] = [
-  {key: 'week', label: '주간'},
-  {key: 'month', label: '월간'},
+  {key: 'day', label: '오늘'},
+  {key: 'yesterday', label: '어제'},
 ];
 
 export const metricConfig: Record<MetricType, MetricConfig> = {
+  steps: {label: '오늘 걸음수', unit: '걸음수', chartTitle: '최근 24시간 걸음수 변화', chartBaseMax: 100},
+  sleep: {label: '수면시간', unit: '분', chartTitle: '최근 24시간 수면시간 변화', chartBaseMax: 60},
   heartRate: {
     label: '심박수',
     unit: 'bpm',
@@ -70,16 +72,18 @@ export const monthlyStressData: StressCount[] = [
 ];
 
 export const STRESS_SCORE_MAX = 100;
+export const DEFAULT_STRESS_CARE_THRESHOLD = 70;
 
 // 일일 스트레스 지수 구간. min 이상이면 해당 단계로 본다.
 export const stressLevels: {
   min: number;
   label: string;
-  colorKey: 'stressWorst' | 'stressBad' | 'stressNormal';
+  colorKey: 'stressWorst' | 'stressBad' | 'stressNormal' | 'icon';
 }[] = [
-  {min: 70, label: '최악', colorKey: 'stressWorst'},
-  {min: 40, label: '나쁨', colorKey: 'stressBad'},
-  {min: 0, label: '보통', colorKey: 'stressNormal'},
+  {min: DEFAULT_STRESS_CARE_THRESHOLD, label: '높음', colorKey: 'stressWorst'},
+  {min: 40, label: '보통', colorKey: 'stressBad'},
+  {min: 25, label: '낮음', colorKey: 'stressNormal'},
+  {min: 0, label: '편안함', colorKey: 'icon'},
 ];
 
 export const getStressLevel = (score: number) =>

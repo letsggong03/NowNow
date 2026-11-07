@@ -13,6 +13,12 @@ class DailyReminderModule(
 
     override fun getName(): String = "DailyReminderModule"
 
+    @ReactMethod
+    fun setNickname(nickname: String, promise: Promise) {
+        DailyReminder.setNickname(reactContext, nickname)
+        promise.resolve(null)
+    }
+
     /** 매일 hour:minute(폰 시간)에 messages 중 하나로 알림. 반환: 다음 알림 시각(ms) */
     @ReactMethod
     fun schedule(hour: Int, minute: Int, messages: ReadableArray, promise: Promise) {
@@ -29,6 +35,16 @@ class DailyReminderModule(
     fun cancel(promise: Promise) {
         DailyReminder.disable(reactContext)
         promise.resolve(null)
+    }
+
+    @ReactMethod
+    fun setExtras(city: String, playDays: String, promise: Promise) {
+        try {
+            DailyReminder.setExtras(reactContext, city, playDays)
+            promise.resolve(null)
+        } catch (error: Exception) {
+            promise.reject("REMINDER_SETTINGS", "알림을 예약하지 못했어요.", error)
+        }
     }
 
     /** 정각 알람 권한이 있는지. 없으면 정한 시각부터 10분 안에 울린다. */
@@ -48,6 +64,12 @@ class DailyReminderModule(
     @ReactMethod
     fun showNow(promise: Promise) {
         DailyReminder.show(reactContext)
+        promise.resolve(null)
+    }
+
+    @ReactMethod
+    fun showCareCheckIn(promise: Promise) {
+        DailyReminder.show(reactContext, 3)
         promise.resolve(null)
     }
 }

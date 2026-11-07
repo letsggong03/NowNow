@@ -1,13 +1,28 @@
 const insightService = require("../services/insightService");
 const { isDate, kstToday, weekStartOf } = require("../utils/kstDate");
+const { getAiRecommendation } = require('../services/reportAiRecommendation');
+const { createRateLimiter } = require('../utils/chatRelay');
+
+const allowRecommendation = createRateLimiter(3);
+
+async function createAiRecommendation(req, res) {
+  if (!allowRecommendation(req.user.id)) {
+    return res.status(429).json({message: '잠시 후 추천을 다시 요청해 주세요.'});
+  }
+  try {
+    res.json({data: await getAiRecommendation(req.user.id, req.user.user_metadata)});
+  } catch (error) {
+    res.status(error.status ?? 500).json({message: 'AI 추천을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'});
+  }
+}
 
 async function getStressCauses(req, res) {
   try {
     const period = req.query.period ?? "week";
 
-    if (!["week", "month"].includes(period)) {
+    if (!["day", "yesterday", "week", "month"].includes(period)) {
       return res.status(400).json({
-        message: "period는 week 또는 month여야 합니다."
+        message: "period는 day, yesterday, week 또는 month여야 합니다."
       });
     }
 
@@ -104,6 +119,7 @@ async function getWeeklyReport(req, res) {
 }
 
 module.exports = {
+  createAiRecommendation,
   getStressCauses,
   getRecommendation,
   getWeeklyReports,

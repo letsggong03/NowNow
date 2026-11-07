@@ -6,7 +6,7 @@ import type {ChatAction, Message} from '../types';
 
 interface MessageBubbleProps {
   message: Message;
-  onButtonPress: (action: ChatAction) => void;
+  onButtonPress: (action: ChatAction, target?: string) => void;
 }
 
 export default function MessageBubble({
@@ -75,7 +75,7 @@ export default function MessageBubble({
             {message.buttons.map((button, index) => (
               <Pressable
                 key={`${button.action}-${index}`}
-                onPress={() => onButtonPress(button.action)}
+                onPress={() => onButtonPress(button.action, button.target)}
                 style={({pressed}) => [
                   styles.choiceButton,
                   {backgroundColor: theme.accent},

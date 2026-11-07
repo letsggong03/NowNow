@@ -16,7 +16,9 @@ const HOUR_LABEL_INTERVAL = 3;
 
 interface TrendChartProps {
   selectedMetric: MetricType;
-  healthData: any;
+  healthData?: any;
+  hourlySteps?: {time: string; value: number}[];
+  stepsStatus?: string;
 }
 
 interface ChartItem {
@@ -24,13 +26,14 @@ interface ChartItem {
   value: number;
 }
 
-export default function TrendChart({selectedMetric, healthData}: TrendChartProps) {
+export default function TrendChart({selectedMetric, healthData, hourlySteps, stepsStatus}: TrendChartProps) {
   const {theme} = useAppTheme();
 
   const isBloodPressure = selectedMetric === 'bloodPressure';
+  const isSteps = selectedMetric === 'steps';
   const {chartTitle: title, unit, chartBaseMax} = metricConfig[selectedMetric];
 
-  const rawData = isBloodPressure
+  const rawData = isSteps ? hourlySteps ?? [] : isBloodPressure
     ? healthData?.bloodPressureSamples ?? []
     : healthData?.heartRateSamples ?? [];
 
@@ -44,11 +47,12 @@ export default function TrendChart({selectedMetric, healthData}: TrendChartProps
 
       const hour = new Date(item.time).getHours();
 
-      const value = isBloodPressure
+      const value = isSteps ? item.value : isBloodPressure
         ? item.systolic
         : item.bpm;
 
-      chartData[hour].value = value;
+      if (!Number.isFinite(hour) || !Number.isFinite(value) || (isSteps && value <= 0)) return;
+      chartData[hour].value = isSteps ? chartData[hour].value + value : value;
     });
 
   // 기준값보다 큰 측정값이 있으면 막대가 차트 밖으로 넘치지 않도록 최댓값을 늘린다.
@@ -108,6 +112,7 @@ export default function TrendChart({selectedMetric, healthData}: TrendChartProps
       <Text style={[styles.unitText, {color: theme.textMuted}]}>
         단위: {unit}
       </Text>
+      {isSteps && !!stepsStatus && <Text style={[styles.stepsUnitText, {color: theme.textMuted}]}>{stepsStatus}</Text>}
     </ReportCard>
   );
 }
@@ -144,6 +149,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'right',
   },
+  stepsUnitText: {textAlign: 'left'},
   emptyBox: {
     alignItems: 'center',
     height: CHART_HEIGHT,

@@ -8,9 +8,10 @@ interface ChatInputProps {
   value: string;
   onChangeText: (value: string) => void;
   onSend: () => void;
+  placeholder?: string;
 }
 
-export default function ChatInput({value, onChangeText, onSend}: ChatInputProps) {
+export default function ChatInput({value, onChangeText, onSend, placeholder = '오늘 하루를 이야기해 주세요...'}: ChatInputProps) {
   const {theme} = useAppTheme();
   const sendScale = useRef(new Animated.Value(1)).current;
 
@@ -37,7 +38,7 @@ export default function ChatInput({value, onChangeText, onSend}: ChatInputProps)
         value={value}
         onChangeText={onChangeText}
         onSubmitEditing={onSend}
-        placeholder="오늘 하루를 이야기해 주세요..."
+        placeholder={placeholder}
         placeholderTextColor={theme.textMuted}
         returnKeyType="send"
         style={[

@@ -24,23 +24,21 @@ export default function LoginScreen({ navigation }: any) {
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
 
-      console.log("로그인 성공:", data);
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log("세션:", sessionData.session);
-
       Alert.alert("로그인 성공");
 
       // 👉 RootNavigator가 session 보고 자동 전환함
     } catch (error: any) {
-      Alert.alert("로그인 실패", error.message);
+      const message = error.code === 'invalid_credentials' ? '이메일과 비밀번호를 확인해 주세요.'
+        : error.code === 'email_not_confirmed' ? '이메일 인증을 먼저 완료해 주세요.'
+        : '로그인하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
+      Alert.alert("로그인 실패", message);
     }
   };
 

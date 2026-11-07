@@ -1,11 +1,15 @@
-import {Platform} from 'react-native';
+import {NativeModules, Platform} from 'react-native';
 
 import {supabase} from '../supabase';
 
 // 안드로이드 에뮬레이터에서는 호스트 PC의 localhost가 10.0.2.2로 보인다.
-const DEV_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+// USB 연결 실기기는 adb reverse로 PC 서버에 접속한다.
+const DEV_HOST = Platform.OS === 'android'
+  ? NativeModules.HealthConnectModule?.localApiHost ?? '10.0.2.2'
+  : 'localhost';
 
-export const API_BASE_URL = `http://${DEV_HOST}:5000`;
+const deployedApiUrl: string = NativeModules.HealthConnectModule?.apiBaseUrl ?? '';
+export const API_BASE_URL = deployedApiUrl.replace(/\/$/, '') || `http://${DEV_HOST}:5000`;
 
 export class ApiError extends Error {
   status: number;
@@ -19,7 +23,7 @@ export class ApiError extends Error {
   }
 }
 
-type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined>;
@@ -61,11 +65,17 @@ export async function request<T>(
     }
   }
 
-  const response = await fetch(buildUrl(path, query), {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path, query), {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    const help = deployedApiUrl ? '인터넷 연결을 확인하고 다시 시도해 주세요.' : '현재 앱은 테스트용 PC 서버에 연결해야 해요.';
+    throw new ApiError(0, `서버에 연결하지 못했어요. ${help}`, null);
+  }
 
   const text = await response.text();
   let json: any = null;

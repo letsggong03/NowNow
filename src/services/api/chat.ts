@@ -1,7 +1,6 @@
 import {request} from './client';
 
-// 명세상 'USER' 또는 AI 역할. AI 쪽 값은 백엔드와 확정 필요.
-export type ChatRole = 'USER' | 'AI';
+export type ChatRole = 'USER' | 'ASSISTANT';
 
 export interface ChatMessageRecord {
   chat_id: number;
@@ -41,12 +40,21 @@ export const deleteChatMessage = async (chat_id: number) => {
   await request('DELETE', `/api/chat/messages/${chat_id}`);
 };
 
-export const saveChatSummary = async (chat_id: number, summary: string) => {
+export const saveChatSummary = async (chat_id: number, summary: string, keywords: string[] = []) => {
   const res = await request<{message: string; data: ChatSummaryRecord}>(
     'POST',
     '/api/chat/summary',
-    {body: {chat_id, summary}},
+    {body: {chat_id, summary, keywords}},
   );
+  return res.data;
+};
+
+export type ChatTurn = {role: 'user' | 'assistant'; content: string};
+
+export const requestChatReply = async (message: string, history: ChatTurn[]) => {
+  const res = await request<{data: {reply: string; suggestion?: 'stress' | 'blood_pressure' | 'sleep' | 'steps'}}>('POST', '/api/chat/reply', {
+    body: {message, history, useHealthContext: true},
+  });
   return res.data;
 };
 
