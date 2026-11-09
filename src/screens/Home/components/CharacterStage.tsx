@@ -11,6 +11,8 @@ interface CharacterStageProps {
   mood: MoodType;
   isInteracting: boolean;
   height: number;
+  // 방 위에 겹쳐 놓을 것(가장자리 행동 버튼)
+  children?: React.ReactNode;
 }
 
 // 방 색. 다크 모드에서는 어둡게 바꾼다.
@@ -31,6 +33,7 @@ export default function CharacterStage({
   mood,
   isInteracting,
   height,
+  children,
 }: CharacterStageProps) {
   const {theme} = useAppTheme();
   const room = ROOM[theme.mode];
@@ -62,9 +65,7 @@ export default function CharacterStage({
         <Text style={styles.windowSky}>☁️</Text>
       </View>
 
-      <View style={[styles.floor, {backgroundColor: room.floor}]}>
-        <Text style={styles.plant}>🪴</Text>
-      </View>
+      <View style={[styles.floor, {backgroundColor: room.floor}]} />
 
       <View style={styles.content}>
         <CharacterMessage userMood={mood} />
@@ -105,6 +106,8 @@ export default function CharacterStage({
           <CharacterPet mood={mood} isInteracting={isInteracting} />
         </View>
       </View>
+
+      {children}
     </View>
   );
 }
@@ -135,12 +138,6 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
-  },
-  plant: {
-    bottom: 18,
-    fontSize: 34,
-    position: 'absolute',
-    right: 20,
   },
   content: {
     alignItems: 'center',
