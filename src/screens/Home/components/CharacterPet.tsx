@@ -1,5 +1,5 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, StyleSheet, View} from 'react-native';
+import {Animated, StyleSheet, Text, View} from 'react-native';
 
 import type {MoodType} from '../types';
 
@@ -10,7 +10,7 @@ interface CharacterPetProps {
 
 const characterImage = require('../../../assets/images/charactor.png');
 
-export default function CharacterPet({isInteracting}: CharacterPetProps) {
+export default function CharacterPet({isInteracting, mood}: CharacterPetProps) {
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const bounceDirectionRef = useRef(-1);
 
@@ -77,6 +77,8 @@ export default function CharacterPet({isInteracting}: CharacterPetProps) {
           },
         ]}
       />
+      {mood !== 'neutral' && <Text accessibilityLabel={mood === 'happy' ? '기쁜 뿡뿡이' : '곁에 있어주는 뿡뿡이'}
+        style={styles.mood}>{mood === 'happy' ? '✨' : '🤍'}</Text>}
     </View>
   );
 }
@@ -92,4 +94,5 @@ const styles = StyleSheet.create({
     height: 168,
     width: 168,
   },
+  mood: {position: 'absolute', top: 12, right: '27%', fontSize: 25},
 });

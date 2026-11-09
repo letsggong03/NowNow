@@ -1,5 +1,10 @@
 import {request} from './client';
 
+export async function getTodayBloodPressure() {
+  const {data} = await request<{data: {measured_at: string; systolic: number; diastolic: number}[]}>('GET', '/api/health/blood-pressure');
+  return data.map(row => ({time: row.measured_at, systolic: row.systolic, diastolic: row.diastolic}));
+}
+
 // HealthConnectModule.getHealthData()가 돌려주는 값 중 저장할 부분
 export interface HealthConnectData {
   heartRateSamples?: {time: string; bpm: number}[];

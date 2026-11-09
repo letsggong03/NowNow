@@ -12,17 +12,17 @@ export const chatDelays = {
 export const chatScript = {
   greeting: '오늘 기분이 좋지 않아 보여... 무슨 일 있어?',
   listeningReplies: [
-    '그랬군요! 더 이야기해 주시겠어요?',
-    '정말 힘드셨겠어요.',
-    '잘 들었어요. 또 어떤 일이 있었나요?',
+    '그랬구나! 조금 더 들려줄래?',
+    '정말 힘들었겠다.',
+    '잘 들었어. 또 어떤 일이 있었어?',
   ],
-  acknowledge: '알겠습니다.',
-  summaryOffer: '오늘 하루 정말 힘들었겠어요. 제가 오늘 하루를 정리해드릴까요?',
-  summaryDeclined: '알겠어요! 더 이야기하고 싶으시면 언제든 말씀해 주세요.',
+  acknowledge: '알겠어!',
+  summaryOffer: '오늘 들려준 이야기, 뿡뿡이가 같이 정리해볼까? ♡',
+  summaryDeclined: '알겠어! 더 이야기하고 싶을 때 언제든 찾아와.',
   keywordsLabel: '감정일기 키워드',
-  solutionOffer: '해결책도 알려드릴까요?',
-  solutionDeclined: '알겠어요! 오늘도 고생하셨어요.',
-  reliefOffer: '스트레스 완화를 위해 이런 활동들은 어떠세요?',
+  solutionOffer: '지금 마음이 조금 가벼워질 방법도 같이 찾아볼까?',
+  solutionDeclined: '알겠어! 오늘도 고생 많았어.',
+  reliefOffer: '뿡뿡이랑 잠깐 쉬어갈래? ♡',
 };
 
 export const summaryButtons: MessageButton[] = [
@@ -38,11 +38,9 @@ export const solutionButtons: MessageButton[] = [
 export const reliefButtons: MessageButton[] = [
   {label: '편안한 우리집', action: 'home'},
   {label: '명상', action: 'meditation'},
-  {label: '커뮤니티에 털어놓기', action: 'community'},
 ];
 
 export const reliefResponses: Record<ReliefAction, string> = {
-  home: '편안한 조명과 온도로 집안 분위기를 조성해드릴게요.',
-  meditation: '명상 도우미를 실행할게요.',
-  community: '커뮤니티로 이동합니다.',
+  home: '우리 이불 폭 덮고 같이 쉴까? 뿡뿡이도 옆에서 쿨쿨할게. (˶ᵔ ᵕ ᵔ˶) zzZ',
+  meditation: '뿡뿡이랑 잠깐 숨을 고르자. 명상 영상도 열어줄게 🌿',
 };

@@ -1,6 +1,9 @@
 package com.mibandtest
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.util.Log
+import android.os.Build
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.records.HeartRateRecord
@@ -8,6 +11,7 @@ import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.AggregateRequest
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.facebook.react.bridge.Arguments
@@ -29,6 +33,104 @@ class HealthConnectModule(
 
     override fun getName(): String {
         return "HealthConnectModule"
+    }
+
+    override fun getConstants(): Map<String, Any> {
+        val emulator = Build.MODEL.contains("sdk_gphone", ignoreCase = true) ||
+            Build.PRODUCT.startsWith("sdk") || Build.HARDWARE == "ranchu"
+        return mapOf(
+            "localApiHost" to if (emulator) "10.0.2.2" else "127.0.0.1",
+            "apiBaseUrl" to BuildConfig.NOWNOW_API_BASE_URL
+        )
+    }
+
+    @ReactMethod
+    fun openHealthConnectSettings(promise: Promise) {
+        try {
+            reactContext.startActivity(
+                Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            promise.resolve(null)
+        } catch (error: ActivityNotFoundException) {
+            promise.reject("HEALTH_CONNECT_UNAVAILABLE", "이 기기에서 헬스 커넥트 설정을 열 수 없어요.", error)
+        } catch (error: SecurityException) {
+            promise.reject("HEALTH_CONNECT_SETTINGS_ERROR", "헬스 커넥트 설정을 열지 못했어요.", error)
+        }
+    }
+
+    @ReactMethod
+    fun requestHealthPermissions(promise: Promise) {
+        val activity = reactContext.currentActivity as? MainActivity
+        if (activity == null) {
+            promise.reject("NO_ACTIVITY", "앱 화면에서 다시 시도해 주세요.")
+            return
+        }
+        activity.runOnUiThread { activity.requestHealthPermissions(promise) }
+    }
+
+    @ReactMethod
+    fun getActivityTrend(metric: String, promise: Promise) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                require(metric == "steps" || metric == "sleep")
+                val client = HealthConnectClient.getOrCreate(reactContext)
+                val end = Instant.now()
+                val zone = ZoneId.systemDefault()
+                val start = if (metric == "steps") {
+                    end.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
+                } else {
+                    end.minus(24, ChronoUnit.HOURS)
+                }
+                val range = TimeRangeFilter.between(start, maxOf(end, start.plusMillis(1)))
+                val points = Arguments.createArray()
+                if (metric == "steps") {
+                    val rows = client.aggregateGroupByDuration(AggregateGroupByDurationRequest(
+                        metrics = setOf(StepsRecord.COUNT_TOTAL),
+                        timeRangeFilter = range,
+                        timeRangeSlicer = Duration.ofHours(1)
+                    ))
+                    for (row in rows) {
+                        val count = row.result[StepsRecord.COUNT_TOTAL] ?: continue
+                        val point = Arguments.createMap()
+                        point.putString("time", row.startTime.toString())
+                        point.putDouble("value", count.toDouble())
+                        points.pushMap(point)
+                    }
+                } else {
+                    val rows = client.readRecords(ReadRecordsRequest(
+                        recordType = SleepSessionRecord::class, timeRangeFilter = range
+                    )).records
+                    val sessions = rows.sortedBy { it.startTime }
+                    for (hour in 0L until 24L) {
+                        val from = start.plus(hour, ChronoUnit.HOURS)
+                        val to = from.plus(1, ChronoUnit.HOURS)
+                        var coveredUntil = from
+                        var seconds = 0L
+                        for (session in sessions) {
+                            val overlapStart = maxOf(coveredUntil, session.startTime)
+                            val overlapEnd = minOf(to, session.endTime)
+                            if (overlapEnd.isAfter(overlapStart)) {
+                                seconds += Duration.between(overlapStart, overlapEnd).seconds
+                                coveredUntil = overlapEnd
+                            }
+                        }
+                        if (seconds == 0L) continue
+                        val point = Arguments.createMap()
+                        point.putString("time", from.toString())
+                        point.putDouble("value", seconds / 60.0)
+                        points.pushMap(point)
+                    }
+                }
+                val result = Arguments.createMap()
+                result.putString("start", start.toString())
+                result.putString("end", end.toString())
+                result.putArray("points", points)
+                promise.resolve(result)
+            } catch (error: Exception) {
+                promise.reject("ACTIVITY_TREND_ERROR", error)
+            }
+        }
     }
 
     @ReactMethod
@@ -57,8 +159,9 @@ class HealthConnectModule(
                     )
                 )
 
-                val totalSteps = stepsResponse[StepsRecord.COUNT_TOTAL] ?: 0L
-                result.putDouble("stepsTotal", totalSteps.toDouble())
+                val totalSteps = stepsResponse[StepsRecord.COUNT_TOTAL]
+                if (totalSteps == null) result.putNull("stepsTotal")
+                else result.putDouble("stepsTotal", totalSteps.toDouble())
 
                 // 2. 오늘 심박수 목록 + 가장 최근 심박수
                 val heartRateResponse = client.readRecords(
@@ -184,8 +287,6 @@ class HealthConnectModule(
                 result.putString("latestSleepStartTime", latestSleepStartTime?.toString())
                 result.putString("latestSleepEndTime", latestSleepEndTime?.toString())
                 result.putArray("sleepSessions", sleepSessions)
-
-                Log.d("HEALTH_DATA", result.toString())
 
                 promise.resolve(result)
             } catch (e: Exception) {

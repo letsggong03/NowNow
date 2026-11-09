@@ -14,6 +14,7 @@ class MainApplication : Application(), ReactApplication {
   override val reactHost: ReactHost by lazy {
     getDefaultReactHost(
         context = applicationContext,
+        useDevSupport = BuildConfig.DEBUG && !BuildConfig.BUNDLED_TEST_APP,
         packageList =
             PackageList(this).packages.apply {
                 add(HealthConnectPackage())

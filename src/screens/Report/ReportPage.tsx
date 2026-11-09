@@ -1,9 +1,10 @@
-import React, {useEffect, useMemo, useState} from 'react';
-import {ScrollView, StyleSheet, NativeModules, View, Text} from 'react-native';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {ScrollView, StyleSheet, NativeModules, View, Text, Pressable, TextInput} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
-import {Activity, Footprints, HeartPulse, Moon} from 'lucide-react-native';
+import {Activity, Footprints, HeartPulse, Moon, Pencil, RefreshCw} from 'lucide-react-native';
 import HealthCard from './components/HealthCard';
+import ActivityTrendCard from './components/ActivityTrendCard';
 import InsightCard from './components/InsightCard';
 import ReportHeader from './components/ReportHeader';
 import StressCauseCard from './components/StressCauseCard';
@@ -14,8 +15,7 @@ import {useReport} from './hooks/useReport';
 import type {ReportTab} from './types';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
-import {saveHealthRecords} from '../../services/api/health';
-import {createMockHealthData} from '../../services/health/mockHealthData';
+import {getTodayBloodPressure, saveHealthRecords} from '../../services/api/health';
 
 const {HealthConnectModule} = NativeModules;
 
@@ -46,6 +46,9 @@ export default function ReportPage() {
   // 모듈 로드 시점이 아니라 화면이 열릴 때의 날짜를 기준으로 한다.
   const dateText = useMemo(formatToday, []);
 
+  const [healthRevision, setHealthRevision] = useState(0);
+  const [healthData, setHealthData] = useState<any>(null);
+  const [healthReadFailed, setHealthReadFailed] = useState(false);
   const {
     selectedMetric,
     setSelectedMetric,
@@ -54,35 +57,86 @@ export default function ReportPage() {
     peakStress,
     lowestStress,
     stressCauses,
-  } = useReport();
+    causesUnavailable,
+  } = useReport(healthData?.heartRateSamples);
 
-  const [healthData, setHealthData] = useState<any>(null);
+  const [bloodPressure, setBloodPressure] = useState<Awaited<ReturnType<typeof getTodayBloodPressure>>>([]);
+  const [healthStatus, setHealthStatus] = useState('');
+  const [inputOpen, setInputOpen] = useState(false);
+  const [systolic, setSystolic] = useState('');
+  const [diastolic, setDiastolic] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [manualTime, setManualTime] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const healthOperation = useRef(false);
+
+  const loadHealthData = async (requestPermissions = false) => {
+    if (healthOperation.current) return;
+    healthOperation.current = true;
+    setSyncing(true);
+    setHealthStatus('');
+    if (HealthConnectModule) {
+      try {
+        if (requestPermissions) await HealthConnectModule.requestHealthPermissions();
+        const data = await HealthConnectModule.getHealthData();
+        setHealthData(data);
+        setHealthReadFailed(false);
+        // 워치 혈압 연동을 검증할 때까지 혈압은 직접 입력으로만 저장한다.
+        await saveHealthRecords({...data, bloodPressureSamples: undefined})
+          .catch(() => setHealthStatus('건강 기록을 서버에 동기화하지 못했어요.'));
+      } catch {
+        setHealthData(null);
+        setHealthReadFailed(true);
+        setHealthStatus('Health Connect의 데이터 읽기 권한을 확인해 주세요.');
+      } finally {
+        setHealthRevision(revision => revision + 1);
+      }
+    }
+    try {
+      setBloodPressure(await getTodayBloodPressure());
+    } catch {
+      setHealthStatus(previous => previous || '저장된 혈압 기록을 불러오지 못했어요.');
+    } finally {
+      healthOperation.current = false;
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
-    const loadHealthData = async () => {
-      // 에뮬레이터처럼 Health Connect를 쓸 수 없는 개발 환경에서는 목업 데이터로 UI를 확인한다.
-      if (!HealthConnectModule) {
-        if (__DEV__) setHealthData(createMockHealthData());
-        return;
-      }
-
-      try {
-        const data = await HealthConnectModule.getHealthData();
-        console.log('Health data:', data);
-
-        setHealthData(data);
-        // 실패해도 화면 표시는 계속하되, 서버·DB 문제를 알 수 있게 로그는 남긴다.
-        await saveHealthRecords(data).catch(error =>
-          console.log('[saveHealthRecords] 건강 기록 저장 실패:', error),
-        );
-      } catch (e) {
-        console.log('HealthConnect 에러:', e);
-        if (__DEV__) setHealthData(createMockHealthData());
-      }
-    };
-
-    loadHealthData();
+    void loadHealthData();
   }, []);
+
+  const saveManualBloodPressure = async () => {
+    if (healthOperation.current) return;
+    const upper = Number(systolic);
+    const lower = Number(diastolic);
+    if (!/^\d+$/.test(systolic) || !/^\d+$/.test(diastolic) || upper < 40 || upper > 300 || lower < 20 || lower > 200 || upper <= lower) {
+      setHealthStatus('혈압계에 표시된 수축기·이완기 혈압을 확인해 주세요.');
+      return;
+    }
+    const time = manualTime || new Date().toISOString();
+    healthOperation.current = true;
+    setManualTime(time);
+    setSaving(true);
+    try {
+      await saveHealthRecords({bloodPressureSamples: [{time, systolic: upper, diastolic: lower}]});
+      setBloodPressure(previous => [...previous.filter(row => Date.parse(row.time) !== Date.parse(time)), {time, systolic: upper, diastolic: lower}]);
+      setInputOpen(false);
+      setSystolic('');
+      setDiastolic('');
+      setManualTime('');
+      setHealthStatus('혈압 기록을 저장했어요.');
+      setHealthRevision(revision => revision + 1);
+    } catch {
+      setHealthStatus('혈압 기록을 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.');
+    } finally {
+      healthOperation.current = false;
+      setSaving(false);
+    }
+  };
+
+  const pressureSamples = [...bloodPressure].sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+  const latestPressure = pressureSamples[pressureSamples.length - 1];
 
   return (
     <SafeAreaView
@@ -113,12 +167,16 @@ export default function ReportPage() {
         value={formatNumber(healthData?.stepsTotal)}
         unit="걸음"
         Icon={Footprints}
+        selected={selectedMetric === 'steps'}
+        onPress={() => {setSelectedMetric('steps'); setInputOpen(false);}}
       />
 
       <HealthCard
         title="수면시간"
         value={formatSleep(healthData?.latestSleepMinutes)}
         Icon={Moon}
+        selected={selectedMetric === 'sleep'}
+        onPress={() => {setSelectedMetric('sleep'); setInputOpen(false);}}
       />
     </View>
 
@@ -129,16 +187,14 @@ export default function ReportPage() {
         unit={metricConfig.heartRate.unit}
         Icon={HeartPulse}
         selected={selectedMetric === 'heartRate'}
-        onPress={() => setSelectedMetric('heartRate')}
+        onPress={() => {setSelectedMetric('heartRate'); setInputOpen(false);}}
       />
 
       <HealthCard
         title={metricConfig.bloodPressure.label}
         value={
-          healthData?.latestSystolic && healthData?.latestDiastolic
-            ? `${Math.round(healthData.latestSystolic)}/${Math.round(
-                healthData.latestDiastolic,
-              )}`
+          latestPressure
+            ? `${Math.round(latestPressure.systolic)}/${Math.round(latestPressure.diastolic)}`
             : '-'
         }
         unit={metricConfig.bloodPressure.unit}
@@ -148,18 +204,44 @@ export default function ReportPage() {
       />
       </View>
 
-      <TrendChart selectedMetric={selectedMetric} healthData={healthData} />
+      {selectedMetric === 'steps' || selectedMetric === 'sleep'
+        ? <ActivityTrendCard key={selectedMetric} metric={selectedMetric} revision={healthRevision} />
+        : <TrendChart selectedMetric={selectedMetric} healthData={{...healthData, bloodPressureSamples: pressureSamples}} />}
+      <View style={styles.recordActions}>
+        <Pressable accessibilityRole="button" disabled={syncing || saving} onPress={() => void loadHealthData(true)}
+          style={({pressed}) => [styles.recordButton, {backgroundColor: theme.surfaceMuted}, pressed && styles.actionPressed]}>
+          <RefreshCw size={17} color={theme.textMuted} />
+          <Text style={[styles.actionLabel, {color: theme.text}]}>{syncing ? '동기화 중…' : '건강 기록 동기화'}</Text>
+        </Pressable>
+        {selectedMetric === 'bloodPressure' && <Pressable accessibilityRole="button" accessibilityState={{expanded: inputOpen}} disabled={saving} onPress={() => setInputOpen(value => !value)}
+          style={({pressed}) => [styles.recordButton, {backgroundColor: theme.accentMuted}, pressed && styles.actionPressed]}>
+          <Pencil size={17} color={theme.textMuted} />
+          <Text style={[styles.actionLabel, {color: theme.text}]}>{inputOpen ? '혈압 입력 닫기' : '혈압 직접 입력'}</Text>
+        </Pressable>}
+      </View>
+      {selectedMetric === 'bloodPressure' && inputOpen && <View style={[styles.pressureForm, {backgroundColor: theme.surface}]}>
+        <TextInput accessibilityLabel="수축기 혈압" placeholder="수축기 혈압 (mmHg)" placeholderTextColor={theme.textMuted} style={[styles.pressureInput, {color: theme.text, backgroundColor: theme.surfaceMuted}]} keyboardType="number-pad" editable={!saving} value={systolic} onChangeText={setSystolic} />
+        <TextInput accessibilityLabel="이완기 혈압" placeholder="이완기 혈압 (mmHg)" placeholderTextColor={theme.textMuted} style={[styles.pressureInput, {color: theme.text, backgroundColor: theme.surfaceMuted}]} keyboardType="number-pad" editable={!saving} value={diastolic} onChangeText={setDiastolic} />
+        <Pressable accessibilityRole="button" disabled={saving || syncing} onPress={() => void saveManualBloodPressure()}
+          style={({pressed}) => [styles.recordButton, {backgroundColor: theme.accentMuted}, pressed && styles.actionPressed]}>
+          <Text style={[styles.actionLabel, {color: theme.text}]}>{saving ? '저장 중…' : '현재 시각으로 저장'}</Text>
+        </Pressable>
+      </View>}
+      {!!healthStatus && <Text style={{color: theme.text}}>{healthStatus}</Text>}
 
       <StressCauseCard
         causes={stressCauses}
+        unavailable={causesUnavailable}
         period={stressPeriod}
         onPeriodChange={setStressPeriod}
       />
 
       <InsightCard
+        key={healthRevision}
         peakStress={peakStress}
         lowestStress={lowestStress}
-        topCause={stressCauses[0]}
+        analysisUnavailable={healthReadFailed || !HealthConnectModule}
+        analysisLoading={syncing && healthData === null}
       />
       </>
     ) : (
@@ -171,6 +253,12 @@ export default function ReportPage() {
 }
 
 const styles = StyleSheet.create({
+  recordActions: {flexDirection: 'row', flexWrap: 'wrap', gap: 8},
+  recordButton: {alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7, borderRadius: 16, minHeight: 44, paddingHorizontal: 14},
+  actionLabel: {fontSize: 13, fontWeight: '700'},
+  actionPressed: {opacity: 0.75},
+  pressureForm: {borderRadius: 18, padding: 14, gap: 9},
+  pressureInput: {borderRadius: 12, minHeight: 44, paddingHorizontal: 13},
   safeArea: {
     flex: 1,
   },

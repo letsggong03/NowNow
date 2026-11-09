@@ -77,12 +77,13 @@ const ROUTINE_BY_CAUSE = {
 const round1 = value => Math.round(value * 10) / 10;
 
 // chat_summaries 행들의 keywords를 원인별로 센다. count 내림차순, 같으면 목록 순서.
-function countCauses(summaries) {
+function countCauses(summaries, includeCustom = false) {
   const counts = new Map();
+  const order = new Map(CAUSE_KEYWORDS.map((keyword, index) => [keyword, index]));
 
   for (const { keywords } of summaries) {
     for (const keyword of new Set(keywords ?? [])) {
-      if (CAUSE_KEYWORDS.includes(keyword)) {
+      if (CAUSE_KEYWORDS.includes(keyword) || (includeCustom && typeof keyword === 'string' && keyword.trim() && keyword.length <= 30)) {
         counts.set(keyword, (counts.get(keyword) ?? 0) + 1);
       }
     }
@@ -93,7 +94,7 @@ function countCauses(summaries) {
     .sort(
       (a, b) =>
         b.count - a.count ||
-        CAUSE_KEYWORDS.indexOf(a.cause) - CAUSE_KEYWORDS.indexOf(b.cause)
+        (order.get(a.cause) ?? order.size) - (order.get(b.cause) ?? order.size)
     );
 }
 

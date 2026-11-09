@@ -1,11 +1,8 @@
-import {useMemo, useState} from 'react';
-
-import {
-  monthlyStressData,
-  todayHRVData,
-  weeklyStressData,
-} from '../constants/reportData';
+import {useEffect, useMemo, useState} from 'react';
+import {request} from '../../../services/api/client';
 import type {MetricType, ReportPeriod, StressCause, StressPeriod} from '../types';
+import {hourlyStress} from '../../../../backend/services/stressCalculator';
+import type {HealthConnectData} from '../../../services/api/health';
 
 const withPercentage = (
   causes: Omit<StressCause, 'percentage'>[],
@@ -18,34 +15,41 @@ const withPercentage = (
   }));
 };
 
-export const useReport = () => {
+export const useReport = (samples: HealthConnectData['heartRateSamples']) => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('heartRate');
   const [period, setPeriod] = useState<ReportPeriod>('day');
-  const [stressPeriod, setStressPeriod] = useState<StressPeriod>('week');
+  const [stressPeriod, setStressPeriod] = useState<StressPeriod>('day');
 
-  const peakStress = useMemo(
-    () =>
-      todayHRVData.reduce((max, current) =>
-        current.stress > max.stress ? current : max,
-      ),
-    [],
-  );
+  const [stressCauses, setStressCauses] = useState<StressCause[]>([]);
+  const [causesUnavailable, setCausesUnavailable] = useState(false);
+  const date = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  const lowestStress = useMemo(
-    () =>
-      todayHRVData.reduce((min, current) =>
-        current.stress < min.stress ? current : min,
-      ),
-    [],
-  );
+  const timeline = useMemo(() => {
+    const now = Date.now();
+    const start = Date.parse(`${date}T00:00:00+09:00`);
+    const unique = new Map<string, number>();
+    for (const {time, bpm} of samples ?? []) {
+      const measured = Date.parse(time);
+      if (measured >= start && measured <= now && Number.isFinite(bpm) && bpm > 0) {
+        unique.set(new Date(measured).toISOString(), bpm);
+      }
+    }
+    return hourlyStress(Array.from(unique, ([measured_at, bpm]) => ({measured_at, bpm})));
+  }, [date, samples]);
 
-  const stressCauses = useMemo(
-    () =>
-      withPercentage(
-        stressPeriod === 'week' ? weeklyStressData : monthlyStressData,
-      ),
-    [stressPeriod],
-  );
+  useEffect(() => {
+    let active = true;
+    setStressCauses([]);
+    setCausesUnavailable(false);
+    request<{data: {causes: Omit<StressCause, 'percentage'>[]}}>('GET', '/api/reports/stress-causes', {query: {period: stressPeriod}})
+      .then(({data}) => {if (active) setStressCauses(withPercentage(data.causes));})
+      .catch(() => {if (active) setCausesUnavailable(true);});
+    return () => {active = false;};
+  }, [date, stressPeriod]);
+
+  const sorted = [...timeline].sort((a, b) => a.stress - b.stress);
+  const peakStress = sorted[sorted.length - 1] ?? null;
+  const lowestStress = sorted[0] ?? null;
 
   return {
     selectedMetric,
@@ -57,5 +61,6 @@ export const useReport = () => {
     peakStress,
     lowestStress,
     stressCauses,
+    causesUnavailable,
   };
 };

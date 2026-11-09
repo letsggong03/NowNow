@@ -11,9 +11,10 @@ import {useCharacterHome} from './hooks/useCharacterHome';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {shadows} from '../../theme/shadows';
 import {useAppTheme} from '../../theme/ThemeProvider';
+import type {MoodType} from './types';
 
 
-export default function HomePage() {
+export default function HomePage({onMoodSelected}: {onMoodSelected?: (mood: MoodType) => void}) {
   const {theme} = useAppTheme();
   const {
     userMood,
@@ -43,7 +44,10 @@ export default function HomePage() {
           <Text style={[styles.title, {color: theme.text}]}>
             오늘 기분은 어떠세요?
           </Text>
-          <MoodSelector selectedMood={userMood} onMoodChange={setUserMood} />
+          <MoodSelector selectedMood={userMood} onMoodChange={mood => {
+            setUserMood(mood);
+            onMoodSelected?.(mood);
+          }} />
         </View>
 
         <View style={[styles.petCard, {backgroundColor: theme.background}]}>

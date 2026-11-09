@@ -1,5 +1,5 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Switch, Text, View} from 'react-native';
 import {ChevronRight, type LucideIcon} from 'lucide-react-native';
 import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
@@ -10,6 +10,7 @@ interface SettingItem {
   Icon: LucideIcon;
   destructive?: boolean;
   onPress?: () => void;
+  toggle?: {value: boolean; disabled: boolean; onValueChange: (value: boolean) => void};
 }
 
 interface SettingsSectionProps {
@@ -70,7 +71,10 @@ export default function SettingsSection({title, items}: SettingsSectionProps) {
                   </Text>
                 )}
               </View>
-              {!item.destructive && (
+              {item.toggle ? (
+                <Switch accessibilityLabel={item.label} {...item.toggle}
+                  trackColor={{false: theme.border, true: theme.accent}} />
+              ) : !item.destructive && (
                 <ChevronRight color={theme.textMuted} size={18} />
               )}
             </Pressable>

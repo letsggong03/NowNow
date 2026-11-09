@@ -5,9 +5,11 @@ import { supabase } from "../services/supabase";
 import { ensureProfile } from "../services/api/profile";
 import {
   cancelDailyReminder,
+  checkForCareNotification,
+  setReminderNickname,
   syncDailyReminder,
 } from "../services/notifications/dailyReminder";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { AppState, View, ActivityIndicator, StyleSheet } from "react-native";
 import { useAppTheme } from "../theme/ThemeProvider";
 
 export default function RootNavigator() {
@@ -34,20 +36,29 @@ export default function RootNavigator() {
   }, []);
 
   // 가입 직후·첫 로그인·세션 복원 어느 경우든 프로필 행이 있게 한다.
-  // 알림 설정은 프로필 행을 읽으므로 프로필을 먼저 확인한 뒤 예약한다.
-  // 로그인하면 설정대로 하루 마무리 알림을 폰에 예약하고, 로그아웃하면 끈다.
   const userId = session?.user?.id;
+  const nickname = session?.user?.user_metadata?.nownow_chat_name;
+  useEffect(() => {
+    if (!loading) void setReminderNickname(nickname).catch(() => {});
+  }, [loading, userId, nickname]);
   useEffect(() => {
     if (loading) return;
     if (userId) {
-      ensureProfile()
-        .then(syncDailyReminder)
-        .catch(error =>
+      void ensureProfile();
+      syncDailyReminder(userId).catch(error =>
           console.log('[dailyReminder] 예약 실패:', error?.message),
         );
     } else {
       cancelDailyReminder().catch(() => {});
     }
+  }, [loading, userId]);
+
+  useEffect(() => {
+    if (loading || !userId) return;
+    const check = () => {void checkForCareNotification(userId).catch(() => {});};
+    check();
+    const subscription = AppState.addEventListener('change', state => {if (state === 'active') check();});
+    return () => subscription.remove();
   }, [loading, userId]);
 
   if (loading) {

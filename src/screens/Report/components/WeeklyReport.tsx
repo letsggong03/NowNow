@@ -5,8 +5,9 @@ import {format, parseISO} from 'date-fns';
 
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import {WEEKLY_REPORT_COUNT} from '../constants/reportData';
-import {createMockWeeklyReport} from '../constants/weeklyReportMock';
 import {getRecentWeeks} from '../utils/weekLabels';
+import {request} from '../../../services/api/client';
+import type {WeeklyReport as WeeklyReportData} from '../types';
 import PeakStressDayCard from './PeakStressDayCard';
 import StressKeywordCard from './StressKeywordCard';
 import WeeklyReportItem from './WeeklyReportItem';
@@ -25,26 +26,32 @@ interface WeeklyReportDetailProps {
 function WeeklyReportDetail({week, onBack}: WeeklyReportDetailProps) {
   const {theme} = useAppTheme();
   const [selectedCause, setSelectedCause] = useState<string | null>(null);
-  const report = useMemo(() => createMockWeeklyReport(week.start), [week]);
+  const [report, setReport] = useState<WeeklyReportData | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    request<{data: Omit<WeeklyReportData, 'days'> & {
+      days: {date: string; finalDailyStressScore: number | null; missing?: string[]}[];
+    }}>('GET', `/api/reports/weekly/${week.key}`)
+      .then(({data}) => {
+        if (!active) return;
+        setReport({...data, days: data.days.flatMap(day =>
+          day.finalDailyStressScore !== null && Number.isFinite(day.finalDailyStressScore) && !day.missing?.includes('demo_fixture')
+            ? [{date: day.date, score: day.finalDailyStressScore, causes: []}] : [])});
+      })
+      .catch(() => {if (active) setUnavailable(true);});
+    return () => {active = false;};
+  }, [week.key]);
 
   const peakDay = useMemo(
     () =>
-      report.days.reduce((max, day) => (day.score > max.score ? day : max)),
+      report?.days.reduce<WeeklyReportData['days'][number] | null>(
+        (max, day) => (!max || day.score > max.score ? day : max), null) ?? null,
     [report],
   );
 
-  // 키워드를 고르면 그 원인이 있던 날을, 아니면 가장 높았던 날을 강조한다.
-  const highlightedDates = useMemo(
-    () =>
-      new Set(
-        selectedCause
-          ? report.days
-              .filter(day => day.causes.includes(selectedCause))
-              .map(day => day.date)
-          : [peakDay.date],
-      ),
-    [report, selectedCause, peakDay],
-  );
+  const highlightedDates = useMemo(() => new Set(peakDay ? [peakDay.date] : []), [peakDay]);
 
   // 안드로이드 뒤로가기 버튼으로도 목록으로 돌아간다.
   useEffect(() => {
@@ -76,26 +83,28 @@ function WeeklyReportDetail({week, onBack}: WeeklyReportDetailProps) {
             {week.label}
           </Text>
           <Text style={[styles.weekRange, {color: theme.textMuted}]}>
-            {formatRange(report.weekStart, report.weekEnd)}
+            {report ? formatRange(report.weekStart, report.weekEnd) : ''}
           </Text>
         </View>
 
         <View style={styles.backButton} />
       </View>
 
-      <WeeklyStressChart
+      {report?.days.length ? <WeeklyStressChart
         days={report.days}
         highlightedDates={highlightedDates}
         animationKey={week.key}
-      />
+      /> : <Text style={{color: theme.textMuted}}>{unavailable
+        ? '주간 기록을 불러오지 못했어요. 서버 연결을 확인해 주세요.'
+        : report ? '이 주에 표시할 스트레스 기록이 없어요.' : '주간 기록을 불러오고 있어요…'}</Text>}
 
-      <StressKeywordCard
+      {report && <StressKeywordCard
         causes={report.causes}
         selectedCause={selectedCause}
         onSelectCause={setSelectedCause}
-      />
+      />}
 
-      <PeakStressDayCard day={peakDay} />
+      {peakDay && <PeakStressDayCard day={peakDay} />}
     </>
   );
 }

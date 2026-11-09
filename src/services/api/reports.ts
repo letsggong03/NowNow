@@ -1,5 +1,14 @@
 import {request} from './client';
 
+export type AiRecommendation =
+  | {status: 'no_records'}
+  | {status: 'ready'; message: string; routine: {title: string; steps: string[]} | null; action?: 'walk_map' | 'movies' | 'music' | 'delivery' | null; musicQuery?: string};
+
+export async function createAiRecommendation() {
+  const {data} = await request<{data: AiRecommendation}>('POST', '/api/reports/ai-recommendation');
+  return data;
+}
+
 export interface HealthReport {
   health_report_id: number;
   user_id: string;

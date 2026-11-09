@@ -22,6 +22,7 @@ import ReportPage from '../screens/Report/ReportPage';
 import {TAB_BAR} from '../theme/layout';
 import {shadows} from '../theme/shadows';
 import {useAppTheme} from '../theme/ThemeProvider';
+import type {MoodType} from '../screens/Home/types';
 
 type TabKey = 'Home' | 'Chat' | 'Report' | 'Settings';
 
@@ -36,11 +37,14 @@ const tabs: {
   {key: 'Settings', label: '내 설정', Icon: UserRound},
 ];
 
-const renderScreen = (activeTab: TabKey, setActiveTab: (tab: TabKey) => void) => {
+const renderScreen = (activeTab: TabKey, setActiveTab: (tab: TabKey) => void, invite: 'play' | 'weather' | null,
+  mood: MoodType | null, onMoodSelected: (mood: MoodType) => void) => {
   if (activeTab === 'Chat') {
     return (
       <ChatPage
         date={new Date().toISOString()}
+        invite={invite}
+        mood={mood}
         onBack={() => setActiveTab('Home')}
       />
     );
@@ -54,11 +58,14 @@ const renderScreen = (activeTab: TabKey, setActiveTab: (tab: TabKey) => void) =>
     return <MyPage />;
   }
 
-  return <HomePage />;
+  return <HomePage onMoodSelected={onMoodSelected} />;
 };
 
 export default function TabNavigator() {
   const [activeTab, setActiveTab] = useState<TabKey>('Home');
+  const [invite, setInvite] = useState<'play' | 'weather' | null>(null);
+  const [moodSelection, setMoodSelection] = useState<{day: string; mood: MoodType} | null>(null);
+  const day = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Seoul'});
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorAnim = useRef(new Animated.Value(0)).current;
   const {theme} = useAppTheme();
@@ -67,7 +74,10 @@ export default function TabNavigator() {
   // 하루 마무리 알림을 누르면 nownow://chat 으로 열린다 → 채팅 탭으로 이동.
   useEffect(() => {
     const openChatLink = (url: string | null) => {
-      if (url?.startsWith('nownow://chat')) setActiveTab('Chat');
+      if (url === 'nownow://chat?invite=play' || url === 'nownow://chat?invite=weather' || url === 'nownow://chat') {
+        setInvite(url.endsWith('=play') ? 'play' : url.endsWith('=weather') ? 'weather' : null);
+        setActiveTab('Chat');
+      }
     };
 
     Linking.getInitialURL().then(openChatLink);
@@ -92,7 +102,11 @@ export default function TabNavigator() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.screen}>{renderScreen(activeTab, setActiveTab)}</View>
+      <View style={styles.screen}>{renderScreen(activeTab, tab => {
+        setInvite(null);
+        setActiveTab(tab);
+      }, invite, moodSelection?.day === day ? moodSelection.mood : null,
+      mood => setMoodSelection({day, mood}))}</View>
 
       {activeTab !== 'Chat' && (
       <View
