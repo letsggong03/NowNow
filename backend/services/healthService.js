@@ -1,4 +1,13 @@
 const supabase = require("../config/supabase");
+const fetchAll = require("../utils/fetchAll");
+const { kstDayRange, kstToday } = require("../utils/kstDate");
+
+function getTodayBloodPressure(userId) {
+  const { start, end } = kstDayRange(kstToday());
+  return fetchAll(() => supabase.from("blood_pressure_records")
+    .select("measured_at,systolic,diastolic").eq("user_id", userId)
+    .gte("measured_at", start).lt("measured_at", end).order("measured_at"));
+}
 
 // 종류별 테이블과 중복 판단 기준. 같은 시각(구간)의 기록을 다시 보내면 덮어쓴다.
 const TABLES = {
@@ -36,5 +45,6 @@ async function saveRecords(user_id, records) {
 }
 
 module.exports = {
+  getTodayBloodPressure,
   saveRecords
 };

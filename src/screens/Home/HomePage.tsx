@@ -10,6 +10,7 @@ import StatusHud from './components/StatusHud';
 import {useCharacterHome} from './hooks/useCharacterHome';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
+import type {MoodType} from './types';
 
 // 상태창·오늘 고른 것·탭바가 차지하는 높이. 나머지를 캐릭터 방에 준다.
 const HOME_CHROME_HEIGHT = 280;
@@ -19,7 +20,11 @@ const ROOM_MIN_HEIGHT = 320;
 const ROOM_MAX_HEIGHT = 500;
 
 // 캐릭터 키우기 게임 느낌의 홈: 상태창 → 캐릭터 방(가장자리 행동 버튼) → 선택지 → 오늘 고른 것
-export default function HomePage() {
+export default function HomePage({
+  onMoodSelected,
+}: {
+  onMoodSelected?: (mood: MoodType) => void;
+}) {
   const {theme} = useAppTheme();
   const {height: windowHeight} = useWindowDimensions();
   const {
@@ -54,7 +59,10 @@ export default function HomePage() {
         <StatusHud
           preferences={userPreferences}
           mood={userMood}
-          onMoodChange={setUserMood}
+          onMoodChange={mood => {
+            setUserMood(mood);
+            onMoodSelected?.(mood);
+          }}
         />
 
         <CharacterStage

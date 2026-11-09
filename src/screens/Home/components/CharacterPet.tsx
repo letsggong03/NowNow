@@ -1,6 +1,7 @@
 import React, {useEffect, useRef} from 'react';
 import {Animated, StyleSheet} from 'react-native';
 
+import Text from '../../../components/AppText';
 import type {MoodType} from '../types';
 
 interface CharacterPetProps {
@@ -13,7 +14,7 @@ const characterImage = require('../../../assets/images/charactor.png');
 
 const IDLE_DURATION = 1400;
 
-export default function CharacterPet({isInteracting}: CharacterPetProps) {
+export default function CharacterPet({isInteracting, mood}: CharacterPetProps) {
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const bounceDirectionRef = useRef(-1);
   // 가만히 있을 때도 숨 쉬듯 살짝 커졌다 작아진다.
@@ -120,6 +121,13 @@ export default function CharacterPet({isInteracting}: CharacterPetProps) {
           },
         ]}
       />
+      {mood !== 'neutral' && (
+        <Text
+          accessibilityLabel={mood === 'happy' ? '기쁜 뿡뿡이' : '곁에 있어주는 뿡뿡이'}
+          style={styles.mood}>
+          {mood === 'happy' ? '✨' : '🤍'}
+        </Text>
+      )}
     </Animated.View>
   );
 }
@@ -135,4 +143,5 @@ const styles = StyleSheet.create({
     height: 200,
     width: 200,
   },
+  mood: {position: 'absolute', top: 12, right: '27%', fontSize: 25},
 });

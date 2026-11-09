@@ -10,12 +10,12 @@ const formatWeekLabel = (weekStart: Date) => {
   return `${format(thursday, 'yyyy년 M월')} ${ordinal} 주`;
 };
 
-// 이번 주를 제외한 최근 완료된 주들을 최신순으로 반환한다.
+// 이번 주부터 최근 주를 최신순으로 반환한다.
 export const getRecentWeeks = (count: number, baseDate = new Date()) => {
   const thisWeekStart = startOfWeek(baseDate, {weekStartsOn: 1});
 
   return Array.from({length: count}, (_, index) => {
-    const weekStart = subWeeks(thisWeekStart, index + 1);
+    const weekStart = subWeeks(thisWeekStart, index);
 
     return {
       key: format(weekStart, 'yyyy-MM-dd'),

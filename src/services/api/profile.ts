@@ -36,6 +36,10 @@ export async function getSettings() {
   }
 }
 
+export async function updateStressThreshold(stressThreshold: number) {
+  await request('PUT', '/api/me/settings', {body: {stress_threshold: stressThreshold}});
+}
+
 // 서버에 못 붙거나 프로필 행이 아직 없으면 가입 때 넣은 닉네임을 쓴다.
 export async function getProfile() {
   try {
