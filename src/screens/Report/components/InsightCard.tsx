@@ -1,5 +1,6 @@
 import React, {useRef, useState} from 'react';
-import {Linking, Pressable, StyleSheet, Text, View} from 'react-native';
+import {Linking, Pressable, StyleSheet, View} from 'react-native';
+import Text from '../../../components/AppText';
 import {AlertCircle, ChevronRight, MapPin, Sparkles} from 'lucide-react-native';
 
 import {useAppTheme} from '../../../theme/ThemeProvider';

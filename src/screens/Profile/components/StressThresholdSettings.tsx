@@ -1,5 +1,7 @@
 import React, {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
+import TextInput from '../../../components/AppTextInput';
+import Text from '../../../components/AppText';
 import {getSettings, updateStressThreshold} from '../../../services/api/profile';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import {DEFAULT_STRESS_CARE_THRESHOLD, stressLevels} from '../../Report/constants/reportData';

@@ -1,6 +1,7 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, StyleSheet, Text, View} from 'react-native';
+import {Animated, StyleSheet, View} from 'react-native';
 
+import Text from '../../../components/AppText';
 import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import {characterMessages} from '../constants/homeContent';
@@ -10,58 +11,73 @@ interface CharacterMessageProps {
   userMood: MoodType;
 }
 
-const FADE_DURATION = 260;
-
+// 캐릭터 머리 위 말풍선. 기분이 바뀌면 톡 튀어나온다.
 export default function CharacterMessage({userMood}: CharacterMessageProps) {
   const {theme} = useAppTheme();
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const translateAnim = useRef(new Animated.Value(0)).current;
+  const popAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    fadeAnim.setValue(0);
-    translateAnim.setValue(8);
-
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        duration: FADE_DURATION,
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateAnim, {
-        duration: FADE_DURATION,
-        toValue: 0,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, translateAnim, userMood]);
+    popAnim.setValue(0);
+    Animated.spring(popAnim, {
+      friction: 6,
+      tension: 140,
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  }, [popAnim, userMood]);
 
   return (
-    <View style={[styles.card, {backgroundColor: theme.surface}]}>
-      <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [{translateY: translateAnim}],
-        }}>
+    <Animated.View
+      style={[
+        styles.wrap,
+        {
+          opacity: popAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 1],
+          }),
+          transform: [
+            {
+              scale: popAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.85, 1],
+              }),
+            },
+          ],
+        },
+      ]}>
+      <View style={[styles.bubble, {backgroundColor: theme.surface}]}>
         <Text style={[styles.message, {color: theme.text}]}>
           {characterMessages[userMood]}
         </Text>
-      </Animated.View>
-    </View>
+      </View>
+      <View style={[styles.tail, {borderTopColor: theme.surface}]} />
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    ...shadows.card,
+  wrap: {
     alignItems: 'center',
-    borderRadius: 20,
-    minHeight: 82,
-    justifyContent: 'center',
-    paddingHorizontal: 22,
+  },
+  bubble: {
+    ...shadows.subtle,
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
   },
   message: {
     fontSize: 14,
-    lineHeight: 22,
+    lineHeight: 21,
     textAlign: 'center',
+  },
+  tail: {
+    borderLeftColor: 'transparent',
+    borderLeftWidth: 9,
+    borderRightColor: 'transparent',
+    borderRightWidth: 9,
+    borderTopWidth: 10,
+    height: 0,
+    marginTop: -1,
+    width: 0,
   },
 });

@@ -6,10 +6,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
+import TextInput from '../../components/AppTextInput';
+import Text from '../../components/AppText';
 import {format} from 'date-fns';
 import {ko} from 'date-fns/locale';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -18,8 +18,13 @@ import ChatHeader from './components/ChatHeader';
 import ChatInput from './components/ChatInput';
 import MessageBubble from './components/MessageBubble';
 import {useChatDiary} from './hooks/useChatDiary';
+import {useKeyboardVisible} from '../../hooks/useKeyboardVisible';
+import {TAB_BAR} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
 import type {MoodType} from '../Home/types';
+
+// 아래 탭바 위로 입력창을 올리는 여백. 키보드가 올라오면 탭바가 숨으므로 여백도 뺀다.
+const TAB_BAR_SPACE = TAB_BAR.height + TAB_BAR.bottomOffset + 8;
 
 interface ChatPageProps {
   date?: string;
@@ -56,6 +61,7 @@ export default function ChatPage({date, invite, mood, onBack}: ChatPageProps) {
     if (!/[^\s,，#]/.test(keywordText)) return;
     if (await addKeywords(keywordText)) setKeywordText('');
   };
+  const keyboardVisible = useKeyboardVisible();
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({animated: true});
@@ -64,11 +70,16 @@ export default function ChatPage({date, invite, mood, onBack}: ChatPageProps) {
   return (
     <SafeAreaView
       style={[styles.safeArea, {backgroundColor: theme.background}]}
-      edges={['top', 'bottom']}>
+      edges={keyboardVisible ? ['top', 'bottom'] : ['top']}>
       <KeyboardAvoidingView
         style={[styles.container, {backgroundColor: theme.background}]}
         behavior={Platform.OS === 'android' ? 'height' : 'padding'}>
-        <View style={[styles.chatPanel, {backgroundColor: theme.background}]}>
+        <View
+          style={[
+            styles.chatPanel,
+            {backgroundColor: theme.background},
+            !keyboardVisible && styles.aboveTabBar,
+          ]}>
           <ChatHeader title={formatChatDate(date)} onBack={onBack} />
           <View style={styles.quickActions}>
             <Pressable accessibilityRole="button" disabled={busy} onPress={openHealthRecord}>
@@ -142,7 +153,9 @@ const styles = StyleSheet.create({
   },
   chatPanel: {
     flex: 1,
-    paddingBottom: 0,
+  },
+  aboveTabBar: {
+    paddingBottom: TAB_BAR_SPACE,
   },
   messageList: {
     flex: 1,

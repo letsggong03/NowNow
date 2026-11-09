@@ -11,10 +11,11 @@ import {
   LayoutChangeEvent,
   Linking,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import Text from '../components/AppText';
 
+import {useKeyboardVisible} from '../hooks/useKeyboardVisible';
 import ChatPage from '../screens/Chat/ChatPage';
 import HomePage from '../screens/Home/HomePage';
 import MyPage from '../screens/Profile/MyPage';
@@ -70,6 +71,8 @@ export default function TabNavigator() {
   const indicatorAnim = useRef(new Animated.Value(0)).current;
   const {theme} = useAppTheme();
   const activeIndex = tabs.findIndex(tab => tab.key === activeTab);
+  // 키보드가 올라오면 탭바가 키보드 위로 떠서 입력창을 가리므로 그동안 숨긴다.
+  const keyboardVisible = useKeyboardVisible();
 
   // 하루 마무리 알림을 누르면 nownow://chat 으로 열린다 → 채팅 탭으로 이동.
   useEffect(() => {
@@ -108,7 +111,7 @@ export default function TabNavigator() {
       }, invite, moodSelection?.day === day ? moodSelection.mood : null,
       mood => setMoodSelection({day, mood}))}</View>
 
-      {activeTab !== 'Chat' && (
+      {!keyboardVisible && (
       <View
         style={[styles.tabBar, {backgroundColor: theme.nav}]}
         onLayout={handleTabBarLayout}>

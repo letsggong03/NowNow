@@ -1,5 +1,7 @@
 import React, {useEffect, useState} from 'react';
-import {Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Modal, Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import TextInput from '../../../components/AppTextInput';
+import Text from '../../../components/AppText';
 import {loadPreferences, mbtiPattern, preferenceFields, savePreferences, type Preferences} from '../../../services/personalization';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 

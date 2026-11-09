@@ -1,21 +1,32 @@
 import React from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ScrollView, StyleSheet, useWindowDimensions} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
-import CharacterMessage from './components/CharacterMessage';
-import CharacterPet from './components/CharacterPet';
-import InteractionButtons from './components/InteractionButtons';
-import MoodSelector from './components/MoodSelector';
+import CharacterStage from './components/CharacterStage';
+import OptionPicker from './components/OptionPicker';
 import PreferencesCard from './components/PreferencesCard';
+import SideActions from './components/SideActions';
+import StatusHud from './components/StatusHud';
 import {useCharacterHome} from './hooks/useCharacterHome';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
-import {shadows} from '../../theme/shadows';
 import {useAppTheme} from '../../theme/ThemeProvider';
 import type {MoodType} from './types';
 
+// 상태창·오늘 고른 것·탭바가 차지하는 높이. 나머지를 캐릭터 방에 준다.
+const HOME_CHROME_HEIGHT = 280;
+// 선택지가 열리면 방 아래에 선택지 창이 붙어서 방을 그만큼 줄인다.
+const HOME_CHROME_HEIGHT_OPTIONS = 580;
+const ROOM_MIN_HEIGHT = 320;
+const ROOM_MAX_HEIGHT = 500;
 
-export default function HomePage({onMoodSelected}: {onMoodSelected?: (mood: MoodType) => void}) {
+// 캐릭터 키우기 게임 느낌의 홈: 상태창 → 캐릭터 방(가장자리 행동 버튼) → 선택지 → 오늘 고른 것
+export default function HomePage({
+  onMoodSelected,
+}: {
+  onMoodSelected?: (mood: MoodType) => void;
+}) {
   const {theme} = useAppTheme();
+  const {height: windowHeight} = useWindowDimensions();
   const {
     userMood,
     setUserMood,
@@ -27,7 +38,13 @@ export default function HomePage({onMoodSelected}: {onMoodSelected?: (mood: Mood
     handleOptionSelect,
     handleCancelOptions,
   } = useCharacterHome();
-
+  const chromeHeight = selectedAction
+    ? HOME_CHROME_HEIGHT_OPTIONS
+    : HOME_CHROME_HEIGHT;
+  const roomHeight = Math.min(
+    ROOM_MAX_HEIGHT,
+    Math.max(ROOM_MIN_HEIGHT, windowHeight - chromeHeight),
+  );
 
   return (
     <SafeAreaView
@@ -36,30 +53,33 @@ export default function HomePage({onMoodSelected}: {onMoodSelected?: (mood: Mood
       <ScrollView
         alwaysBounceVertical
         keyboardShouldPersistTaps="handled"
-        scrollEnabled
         style={[styles.container, {backgroundColor: theme.background}]}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        <View style={[styles.moodSection, {backgroundColor: theme.surface}]}>
-          <Text style={[styles.title, {color: theme.text}]}>
-            오늘 기분은 어떠세요?
-          </Text>
-          <MoodSelector selectedMood={userMood} onMoodChange={mood => {
+        <StatusHud
+          preferences={userPreferences}
+          mood={userMood}
+          onMoodChange={mood => {
             setUserMood(mood);
             onMoodSelected?.(mood);
-          }} />
-        </View>
+          }}
+        />
 
-        <View style={[styles.petCard, {backgroundColor: theme.background}]}>
-          <CharacterPet mood={userMood} isInteracting={isInteracting} />
-        </View>
+        <CharacterStage
+          mood={userMood}
+          isInteracting={isInteracting}
+          height={roomHeight}>
+          <SideActions
+            completedPreferences={userPreferences}
+            selectedAction={selectedAction}
+            onActionSelect={handleActionSelect}
+            onCancel={handleCancelOptions}
+          />
+        </CharacterStage>
 
-        <CharacterMessage userMood={userMood} />
-        <InteractionButtons
+        <OptionPicker
           selectedAction={selectedAction}
           options={currentOptions}
-          completedPreferences={userPreferences}
-          onActionSelect={handleActionSelect}
           onOptionSelect={handleOptionSelect}
           onCancelOptions={handleCancelOptions}
         />
@@ -80,26 +100,7 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: SCREEN_BOTTOM_INSET,
     paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
-    paddingTop: 16,
-    rowGap: 14,
-  },
-  moodSection: {
-    ...shadows.card,
-    borderRadius: 22,
-    padding: 12,
-    rowGap: 11,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '800',
-    paddingTop: 4,
-    textAlign: 'center',
-  },
-  petCard: {
-    alignItems: 'center',
-    borderRadius: 22,
-    minHeight: 252,
-    justifyContent: 'center',
-    paddingVertical: 34,
+    paddingTop: 12,
+    rowGap: 12,
   },
 });

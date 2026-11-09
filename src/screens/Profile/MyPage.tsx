@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, BackHandler, KeyboardAvoidingView, Linking, NativeModules, Platform, Pressable, ScrollView, StyleSheet, Text} from 'react-native';
+import {Alert, BackHandler, KeyboardAvoidingView, Linking, NativeModules, Platform, Pressable, ScrollView, StyleSheet} from 'react-native';
+import Text from '../../components/AppText';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {

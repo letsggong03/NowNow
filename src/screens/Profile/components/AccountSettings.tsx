@@ -1,5 +1,7 @@
 import React, {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
+import TextInput from '../../../components/AppTextInput';
+import Text from '../../../components/AppText';
 import {KeyRound, Mail, UserRound} from 'lucide-react-native';
 import {supabase} from '../../../services/supabase';
 import {useAppTheme} from '../../../theme/ThemeProvider';

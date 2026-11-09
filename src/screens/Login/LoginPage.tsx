@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   Alert,
 } from "react-native";
+import Text from "../../components/AppText";
 import { supabase } from "../../services/supabase";
 import { useAppTheme } from "../../theme/ThemeProvider";
 import { createAuthStyles } from "./authStyles";

@@ -2,6 +2,7 @@ import React, {useRef} from 'react';
 import {Animated, Pressable, StyleSheet, TextInput, View} from 'react-native';
 import {Send} from 'lucide-react-native';
 
+import {FONT_FAMILY} from '../../../components/AppText';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 
 interface ChatInputProps {
@@ -72,6 +73,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   input: {
+    fontFamily: FONT_FAMILY,
     borderRadius: 18,
     flex: 1,
     fontSize: 13,

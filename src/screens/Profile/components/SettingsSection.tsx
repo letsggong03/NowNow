@@ -1,5 +1,6 @@
 import React from 'react';
-import {Pressable, StyleSheet, Switch, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Switch, View} from 'react-native';
+import Text from '../../../components/AppText';
 import {ChevronRight, type LucideIcon} from 'lucide-react-native';
 import {shadows} from '../../../theme/shadows';
 import {useAppTheme} from '../../../theme/ThemeProvider';

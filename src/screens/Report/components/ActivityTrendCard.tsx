@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {NativeModules, StyleSheet, Text, View} from 'react-native';
+import {NativeModules, StyleSheet, View} from 'react-native';
+import Text from '../../../components/AppText';
 import {useAppTheme} from '../../../theme/ThemeProvider';
 import {metricConfig} from '../constants/reportData';
 import ReportCard from './ReportCard';
