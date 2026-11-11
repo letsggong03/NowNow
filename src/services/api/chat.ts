@@ -49,11 +49,27 @@ export const saveChatSummary = async (chat_id: number, summary: string, keywords
   return res.data;
 };
 
-export type ChatTurn = {role: 'user' | 'assistant'; content: string};
+export type ChatSuggestion = 'stress' | 'blood_pressure' | 'sleep' | 'steps';
 
-export const requestChatReply = async (message: string, history: ChatTurn[]) => {
-  const res = await request<{data: {reply: string; suggestion?: 'stress' | 'blood_pressure' | 'sleep' | 'steps'}}>('POST', '/api/chat/reply', {
-    body: {message, history, useHealthContext: true},
+// 서버가 질문과 답변을 둘 다 저장하고, 오늘 대화로 맥락을 만든다. 앱은 따로 저장하지 않는다.
+type ReplyResponse = {data: {
+  reply: string;
+  suggestion?: ChatSuggestion;
+  userMessageId: number;
+  assistantMessageId: number | null;
+}};
+
+export const requestChatReply = async (message: string) => {
+  const res = await request<ReplyResponse>('POST', '/api/chat/reply', {
+    body: {message, useHealthContext: true},
+  });
+  return res.data;
+};
+
+// 대화 끝 "해결책 줘" 버튼. 지시문은 서버가 만들고, 사용자 메시지로 저장하지 않는다. 답변은 서버가 저장한다.
+export const requestSolution = async (keywords: string[]) => {
+  const res = await request<{data: Omit<ReplyResponse['data'], 'userMessageId'>}>('POST', '/api/chat/reply', {
+    body: {intent: 'solution', keywords, useHealthContext: true},
   });
   return res.data;
 };

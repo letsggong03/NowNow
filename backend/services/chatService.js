@@ -34,6 +34,23 @@ async function getMessagesByUser(user_id) {
   return data;
 }
 
+// since(ISO) 이후 메시지 중 최근 limit개, 오래된 순. AI 대화 맥락용.
+async function getMessagesSince(user_id, since, limit = 40) {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("chat_id, chat_role, message, created_at")
+    .eq("user_id", user_id)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).reverse();
+}
+
 async function deleteMessage(chat_id, user_id) {
   const { error } = await supabase
     .from("chat_messages")
@@ -105,6 +122,7 @@ async function getSummariesByUser(user_id) {
 module.exports = {
   createMessage,
   getMessagesByUser,
+  getMessagesSince,
   deleteMessage,
   createSummary,
   getSummariesByUser

@@ -18,6 +18,7 @@ import type {ReportTab} from './types';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
 import {getTodayBloodPressure, saveHealthRecords} from '../../services/api/health';
+import {syncHealthData} from '../../services/health/healthSync';
 
 const {HealthConnectModule} = NativeModules;
 
@@ -83,9 +84,9 @@ export default function ReportPage() {
         const data = await HealthConnectModule.getHealthData();
         setHealthData(data);
         setHealthReadFailed(false);
-        // 워치 혈압 연동을 검증할 때까지 혈압은 직접 입력으로만 저장한다.
-        await saveHealthRecords({...data, bloodPressureSamples: undefined})
-          .catch(() => setHealthStatus('건강 기록을 서버에 동기화하지 못했어요.'));
+        // 서버 저장은 증분 동기화가 맡는다(마지막 동기화 뒤에 바뀐 기록만, 실패하면 다음에 이어서).
+        const sync = await syncHealthData({force: true});
+        if (sync.status === 'failed') setHealthStatus('건강 기록을 서버에 동기화하지 못했어요.');
       } catch {
         setHealthData(null);
         setHealthReadFailed(true);
