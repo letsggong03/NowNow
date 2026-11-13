@@ -44,7 +44,7 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
 |---|---|
 | ⌚ **건강 데이터 수집** | 갤럭시워치 → Health Connect로 심박수, 걸음 수, 수면, 혈압, 혈중산소 수집 |
 | 📈 **스트레스 지수** | 심박수와 pseudo-HRV로 시간대별 스트레스를 계산하고, 수면·걸음 수·혈압·혈중산소를 반영해 **100점 만점 일일 스트레스 지수** 산출 |
-| 💬 **AI 챗봇** | 건강 데이터, 과거 대화(RAG), 페르소나를 합쳐 답하는 맞춤형 챗봇, 위험 수치 감지 시 안내하는 안전 가드레일 |
+| 💬 **AI 챗봇** | 건강 데이터, 과거 대화 요약(임베딩 의미 검색), 사용자 취향·페르소나를 합쳐 답하는 맞춤형 챗봇, 위험 수치 감지 시 안내하는 안전 가드레일 |
 | 📊 **리포트** | 실시간 리포트(오늘의 건강 데이터)와 주간 리포트(7일 건강·대화 데이터 기반 스트레스 변화) |
 | 🐣 **캐릭터 상호작용** | 뿡뿡이에게 먹이 주기·놀아 주기·음악·취미 선택, 선택 결과는 선호도로 저장해 챗봇 응답에 활용 |
 | 🔐 **인증·설정** | Supabase 이메일 회원가입·로그인, 세션 유지, 라이트/다크 모드 |
@@ -59,16 +59,25 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
                               │
                 ┌─────────────▼──────────────┐
                 │   React Native App (이 레포) │
-                └──────┬───────────────┬──────┘
-                       │               │
-            Node.js / Express     Python FastAPI (AI 서버)
-            (인증·채팅·리포트 API)   (gpt-4o-mini, LangChain, RAG)
-                       │               │
-                       └──────┬────────┘
+                └─────────────┬──────────────┘
+                              │ Supabase 로그인 토큰
                               ▼
-                Supabase PostgreSQL + pgvector
-        (사용자 · 건강 raw · 채팅 · 리포트 · 임베딩)
+                   Node.js / Express 백엔드
+            (인증 확인 · 건강 · 채팅 · 리포트 · 음악 API)
+              │                 │                 │
+              │ AI_RELAY        │ 임베딩           │
+              ▼                 ▼                 ▼
+     AI 서버 (Cloudflare     OpenAI Embeddings    Supabase PostgreSQL
+     Worker) ──▶ OpenAI     (text-embedding-     + pgvector
+     (챗봇 답변·리포트 추천)   3-small, 1536차원)    (사용자 · 건강 raw · 채팅
+                                                  요약 · 리포트 · 임베딩)
 ```
+
+- 앱은 LLM이나 DB를 직접 부르지 않아요. 모든 요청은 로그인 토큰과 함께 **Node.js 백엔드**로 가요.
+- **챗봇 답변·리포트 AI 추천**: 백엔드가 건강 기록·대화 기억·취향을 모아 AI 서버(Cloudflare Worker)의 `/chat`으로 중계하고, Worker가 OpenAI를 호출해요. ([`chatRelayService.js`](backend/services/chatRelayService.js))
+- **대화 기억 검색**: 백엔드가 OpenAI Embeddings API로 최근 30일 채팅 요약을 벡터로 만들어 `memory_embeddings`에 저장하고, pgvector 코사인 거리로 질문과 가까운 요약 3개를 찾아 챗봇 맥락에 넣어요. ([`chatMemorySearch.js`](backend/services/chatMemorySearch.js)) `OPENAI_API_KEY`가 없으면 이 단계는 건너뛰어요.
+- AI 서버 주소·토큰과 OpenAI 키는 백엔드 `.env`에만 두고 앱에는 넣지 않아요.
+- 음악 추천은 백엔드가 YouTube Data API v3로 검색해요.
 
 ## ⌚ 삼성헬스 · Health Connect 연동
 
@@ -170,7 +179,7 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
 | 파트 | 담당 |
 |---|---|
 | 백엔드 | Node.js/Express 서버, 인증·채팅·리포트 API |
-| AI | FastAPI AI 서버, 프롬프트 엔지니어링, RAG 파이프라인 |
+| AI | AI 서버(Cloudflare Worker → OpenAI), 프롬프트 엔지니어링 |
 | DB 설계·UI | ERD 설계, 전체 화면 UI/UX와 초기 프론트엔드 ([@h2st0ry](https://github.com/h2st0ry)) |
 | **건강 데이터·DB 구현·프론트 마무리** | **본인** (아래 참고) |
 
@@ -200,7 +209,7 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
 - 로그인·회원가입 UI와 기능(Supabase Auth, 이메일 인증)을 구현했어요. `AsyncStorage`로 세션을 저장해서 앱을 다시 켜도 로그인이 유지돼요.
 - 리포트 페이지를 **실시간 리포트와 주간 리포트**로 다시 구성했어요.
 - 실시간 리포트에 오늘의 걸음 수, 심박수, 수면, 혈압이 실제 데이터로 표시되게 했어요.
-- AI 서버의 채팅 API를 앱에 연결했어요.
+- 챗봇 채팅을 앱에 연결했어요. (현재는 백엔드를 거쳐 AI 서버로 중계)
 - iOS 위주로 세팅돼 있던 프로젝트의 Android 빌드 오류를 해결했어요.
 
 ### 5. 시스템 아키텍처
@@ -224,7 +233,8 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
 | 네이티브 | Kotlin, Health Connect 1.1.0, Kotlin Coroutines |
 | DB·인증 | Supabase PostgreSQL, pgvector, Supabase Auth |
 | 백엔드 (팀) | Node.js 22, Express 5 |
-| AI (팀) | Python, FastAPI, OpenAI gpt-4o-mini, LangChain |
+| AI (팀) | Cloudflare Workers, OpenAI API (챗봇), OpenAI Embeddings `text-embedding-3-small` + pgvector (대화 기억 검색) |
+| 외부 API | YouTube Data API v3 (음악 추천) |
 | UI | react-native-svg (차트), lucide-react-native, react-native-gesture-handler |
 
 ## 🚀 실행 방법
