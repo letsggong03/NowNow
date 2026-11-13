@@ -458,6 +458,7 @@ class HealthConnectModule(
                     item.putString("time", record.time.toString())
                     item.putDouble("systolic", record.systolic.inMillimetersOfMercury)
                     item.putDouble("diastolic", record.diastolic.inMillimetersOfMercury)
+                    item.putString("sourcePackage", record.metadata.dataOrigin.packageName)
                     bloodPressureSamples.pushMap(item)
                 }
 

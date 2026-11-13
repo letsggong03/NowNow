@@ -19,6 +19,7 @@ import StressThresholdSettings from './components/StressThresholdSettings';
 import {Activity, Bell, Bluetooth, ChevronLeft, CloudSun, Heart, ShieldCheck, Smile} from 'lucide-react-native';
 import {useThemePreference} from './hooks/useThemePreference';
 import {supabase} from '../../services/supabase';
+import {checkBloodPressureBluetooth} from '../../services/bloodPressureBluetooth';
 import {SCREEN_BOTTOM_INSET, SCREEN_HORIZONTAL_PADDING} from '../../theme/layout';
 import {useAppTheme} from '../../theme/ThemeProvider';
 import {DEFAULT_REMINDER_TIME, getReminderPreference, PLAY_DAYS, saveReminderPreference, WEATHER_CITIES, type ReminderSettings} from '../../services/notifications/dailyReminder';
@@ -150,11 +151,15 @@ export default function MyPage() {
           ...wellnessMenus.map(item => ({...item, onPress: () => setPage('stress')})),
           {
             label: '혈압계 연결',
-            description: '블루투스 연결 준비 중',
+            description: '블루투스로 혈압 기록 가져오기',
             Icon: Bluetooth,
             onPress: () => Alert.alert(
               '혈압계 연결',
-              '블루투스 연결은 준비 중이에요. 지금은 리포트에서 혈압을 직접 입력할 수 있어요.',
+              '혈압계 화면에 -P-가 깜박이면 검색을 시작해 주세요. 표준 혈압 서비스를 지원하는 기기에서 측정 기록을 가져올 수 있어요.',
+              [
+                {text: '취소', style: 'cancel'},
+                {text: '검색 시작', onPress: () => void checkBloodPressureBluetooth().then(message => Alert.alert('혈압계 연결 확인', message))},
+              ],
             ),
           },
         ]} />

@@ -138,7 +138,11 @@ export default function ReportPage() {
     }
   };
 
-  const pressureSamples = [...bloodPressure].sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+  const pressureByTime = new Map(bloodPressure.map(sample => [Date.parse(sample.time), sample]));
+  for (const sample of healthData?.bloodPressureSamples ?? []) {
+    pressureByTime.set(Date.parse(sample.time), sample);
+  }
+  const pressureSamples = [...pressureByTime.values()].sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
   const latestPressure = pressureSamples[pressureSamples.length - 1];
 
   return (
