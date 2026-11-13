@@ -12,25 +12,25 @@ async function getTodayBloodPressure(req, res) {
 
 async function saveRecords(req, res) {
   try {
-    const { records, error: validationError } = parseHealthRecords(req.body);
+    const { records, stepsReplace, deleted, skipped, error: validationError } = parseHealthRecords(req.body);
 
     if (validationError) {
       return res.status(400).json({ message: validationError });
     }
 
-    const { saved, failed } = await healthService.saveRecords(req.user.id, records);
+    const { saved, failed } = await healthService.saveRecords(req.user.id, records, { stepsReplace, deleted });
 
     if (Object.keys(failed).length > 0) {
       return res.status(500).json({
         message: "건강 기록 일부 저장 실패",
-        data: { saved },
+        data: { saved, skipped },
         error: failed
       });
     }
 
     res.status(201).json({
       message: "건강 기록 저장 성공",
-      data: { saved }
+      data: { saved, skipped }
     });
   } catch (error) {
     res.status(500).json({

@@ -9,6 +9,7 @@ import {
   setReminderNickname,
   syncDailyReminder,
 } from "../services/notifications/dailyReminder";
+import { syncHealthData } from "../services/health/healthSync";
 import { AppState, View, ActivityIndicator, StyleSheet } from "react-native";
 import { useAppTheme } from "../theme/ThemeProvider";
 
@@ -55,7 +56,11 @@ export default function RootNavigator() {
 
   useEffect(() => {
     if (loading || !userId) return;
-    const check = () => {void checkForCareNotification(userId).catch(() => {});};
+    // 앱을 켜거나 다시 볼 때마다 건강 기록을 증분 동기화한다(5분 안에 다시 부르면 건너뜀).
+    const check = () => {
+      void checkForCareNotification(userId).catch(() => {});
+      void syncHealthData();
+    };
     check();
     const subscription = AppState.addEventListener('change', state => {if (state === 'active') check();});
     return () => subscription.remove();

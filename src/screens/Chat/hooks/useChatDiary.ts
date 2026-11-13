@@ -10,7 +10,8 @@ import {
   SUMMARY_OFFER_THRESHOLD,
   summaryButtons,
 } from '../constants/chatScript';
-import {getChatMessages, requestChatReply, saveChatMessage, saveChatSummary, type ChatTurn} from '../../../services/api/chat';
+import {getChatMessages, requestChatReply, requestSolution, saveChatMessage, saveChatSummary} from '../../../services/api/chat';
+import {ApiError} from '../../../services/api/client';
 import {analyzeStory} from '../utils/analyzeStory';
 import {loadPreferences, offerPreference, savePreferences} from '../../../services/personalization';
 import {openDeliveryApp} from '../../../services/delivery/deliveryApps';
@@ -66,7 +67,6 @@ export const useChatDiary = (mood?: MoodType | null) => {
   const [editingKeywords, setEditingKeywords] = useState(false);
   const [manualKeywords, setManualKeywords] = useState<string[]>([]);
   const lock = useRef(false);
-  const history = useRef<ChatTurn[]>([]);
   const latestUserId = useRef<number | null>(null);
   const summarizedId = useRef<number | null>(null);
   const petOffered = useRef(false);
@@ -85,9 +85,6 @@ export const useChatDiary = (mood?: MoodType | null) => {
         })));
         const userRows = daily.filter(row => row.chat_role === 'USER' && row.message !== HEALTH_REQUEST && row.message !== HEALTH_MESSAGE);
         setUserStory(userRows.map(row => row.message));
-        history.current = daily.slice(-10).map(row => ({
-          role: row.chat_role === 'USER' ? 'user' : 'assistant', content: row.message,
-        }));
         latestUserId.current = userRows[userRows.length - 1]?.chat_id ?? null;
       }
     }).catch(() => { if (active && !lock.current) setError('대화 기록을 불러오지 못했어요.'); });
@@ -125,8 +122,6 @@ export const useChatDiary = (mood?: MoodType | null) => {
     setBusy(true);
     setError('');
     try {
-      const saved = await saveChatMessage('USER', trimmedInput);
-      if (!quickMessage) latestUserId.current = saved.chat_id;
       const nextStory = quickMessage ? userStory : [...userStory, trimmedInput];
       setMessages(previous => [...previous, createMessage('user', trimmedInput)]);
       setUserStory(nextStory);
@@ -150,8 +145,18 @@ export const useChatDiary = (mood?: MoodType | null) => {
           : '말해줘서 고마워. 오늘 마음에 남은 일을 어떤 단어로 적어두고 싶어? 직접 키워드를 넣을 수도 있어.',
           buttons: summaryChoices}
         : acceptedPet ? petCard() : careForMessage(trimmedInput, preferences);
-      const answer = card ? {reply: card.text, suggestion: undefined}
-        : await requestChatReply(trimmedInput, history.current);
+      // AI 답변은 서버가 질문과 답을 같이 저장한다. 앱이 만든 안내 카드는 서버를 거치지 않으니 앱이 저장한다.
+      let answer: {reply: string; suggestion?: Awaited<ReturnType<typeof requestChatReply>>['suggestion']};
+      let userMessageId: number;
+      if (card) {
+        userMessageId = (await saveChatMessage('USER', trimmedInput)).chat_id;
+        answer = {reply: card.text, suggestion: undefined};
+      } else {
+        const response = await requestChatReply(trimmedInput);
+        userMessageId = response.userMessageId;
+        answer = response;
+      }
+      if (!quickMessage) latestUserId.current = userMessageId;
       const {reply} = answer;
       let displayedReply = reply;
       if (!safety && Math.random() < 0.25) {
@@ -161,8 +166,6 @@ export const useChatDiary = (mood?: MoodType | null) => {
         if (nickname && !reply.includes(nickname)) displayedReply = `${nickname}, ${reply}`;
       }
       const care = healthCare(answer.suggestion);
-      const turns: ChatTurn[] = [{role: 'user', content: trimmedInput}, {role: 'assistant', content: reply.slice(0, 4000)}];
-      history.current = [...history.current, ...turns].slice(-10);
       petOffered.current = Boolean((card?.buttons ?? care?.buttons)?.some(button => button.action === 'pet_cat'));
       setMessages(previous => [...previous, createMessage('bot', displayedReply, card?.buttons)]);
       if (care) setMessages(previous => [...previous, createMessage('bot', care.text, care.buttons)]);
@@ -172,7 +175,7 @@ export const useChatDiary = (mood?: MoodType | null) => {
       } else if (stage === 'initial') {
         setStage('listening');
       }
-      await saveChatMessage('ASSISTANT', displayedReply);
+      if (card) await saveChatMessage('ASSISTANT', displayedReply);
       if (care) persistMessage(createMessage('bot', care.text));
       void offerPreference(trimmedInput).then(preference => {
         if (!preference) return;
@@ -185,6 +188,10 @@ export const useChatDiary = (mood?: MoodType | null) => {
         ]);
       }).catch(() => {});
     } catch (failure) {
+      // AI 답변이 실패해도 서버는 질문을 저장했다. 요약 대상이 되도록 id를 받아 둔다.
+      const savedId = failure instanceof ApiError
+        ? (failure.body as {data?: {userMessageId?: unknown}} | null)?.data?.userMessageId : undefined;
+      if (!quickMessage && typeof savedId === 'number') latestUserId.current = savedId;
       const safety = healthSafetyReply(trimmedInput);
       if (safety) setMessages(previous => [...previous, createMessage('bot', safety)]);
       else setError(failure instanceof Error ? failure.message : '연결을 확인하고 다시 시도해 주세요.');
@@ -264,12 +271,11 @@ export const useChatDiary = (mood?: MoodType | null) => {
         lock.current = true;
         setBusy(true);
         try {
-          const causes = [...analyzeStory(userStory).keywords, ...manualKeywords].join(', ');
-          const {reply} = await requestChatReply(
-            `사용자가 말한 오늘의 상황${causes ? `과 정리한 키워드(${causes})` : ''}에 맞춰 부담 없는 해결책 한 가지만 제안해줘. 커뮤니티에 글 올리기는 빼고, 원인은 새로 추정하지 말아줘.`,
-            history.current,
+          const {reply} = await requestSolution(
+            [...analyzeStory(userStory).keywords, ...manualKeywords].filter(word => word.trim() && word.length <= 30).slice(0, 20),
           );
-          appendMessages(createMessage('bot', reply));
+          // 서버가 이미 저장했으니 화면에만 붙인다(appendMessages는 한 번 더 저장한다).
+          setMessages(previous => [...previous, createMessage('bot', reply)]);
         } catch {
           setError('해결책을 불러오지 못했어요. 다시 시도해 주세요.');
           break;

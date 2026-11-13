@@ -122,21 +122,30 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
 - 수면은 자정을 넘기기 때문에 "오늘"이 아니라 **최근 24시간** 기준으로 읽고, 가장 늦게 끝난 세션을 `latest`로 써요.
 - 데이터가 없으면 `latest*` 값은 `0`, 시각은 `null`, 목록은 빈 배열이에요.
 
-### 저장 (앱 → 백엔드 → Supabase)
+### 저장 (앱 → 백엔드 → Supabase) — 증분 동기화
 
-앱은 읽은 값을 [`saveHealthRecords`](src/services/api/health.ts)로 백엔드 `POST /api/health/records`에 보내고, 서버가 Supabase에 저장해요. 앱은 DB에 직접 쓰지 않아요.
+앱은 [`healthSync.ts`](src/services/health/healthSync.ts)로 Health Connect 기록을 백엔드 `POST /api/health/records`에 보내고, 서버가 Supabase에 저장해요. 앱은 DB에 직접 쓰지 않아요.
 
-| 요청 키 | 테이블 | 컬럼 | 충돌 기준 |
+- **언제**: 앱을 켜거나 다시 볼 때(5분 간격), 리포트 화면의 새로고침 버튼
+- **무엇을**: `HealthConnectModule.syncHealthData(token, since)`가 **Changes API**로 마지막 동기화 뒤에 추가·수정·삭제된 레코드만 읽어요.
+  - 첫 동기화는 최근 30일을 읽어요. 토큰이 만료되면(30일 넘게 동기화 안 함) 마지막 동기화 하루 전부터 다시 읽어요.
+- **실패해도 안 빠짐**: 서버 저장이 모두 성공했을 때만 토큰을 저장해요. 실패하면 다음 동기화가 같은 변경분부터 다시 보내요. 며칠 만에 앱을 켜도 그 사이 기록이 다 들어가요.
+- **수정·삭제 반영**: 행마다 Health Connect 레코드 id(`source_record_id`)와 기록한 앱(`data_origin`)을 저장해요. 같은 레코드가 다시 오면 예전 행을 바꾸고, 지워진 레코드는 서버에서도 지워요.
+- **걸음 수**: 폰과 워치의 원본 레코드가 겹치므로 Health Connect 집계(중복 제거)를 **시간별**로 보내고, 그 구간 행을 통째로 바꿔요.
+- 잘못 잰 값 하나 때문에 동기화가 멈추지 않도록 동기화 요청은 이상한 행만 건너뛰어요(`skip_invalid`).
+
+| 요청 키 | 테이블 | 컬럼 | 중복 기준 |
 |---|---|---|---|
-| `heart_rate` | `heart_rate_records` | `user_id`, `measured_at`, `bpm` | `user_id, measured_at` |
-| `blood_pressure` | `blood_pressure_records` | `user_id`, `measured_at`, `systolic`, `diastolic` | `user_id, measured_at` |
-| `oxygen` | `oxygen_records` | `user_id`, `measured_at`, `percentage` | `user_id, measured_at` |
-| `steps` | `steps_records` | `user_id`, `start_time`, `end_time`, `count` | `user_id, start_time, end_time` |
-| `sleep` | `sleep_records` | `user_id`, `start_time`, `end_time` | `user_id, start_time, end_time` |
+| `heart_rate` | `heart_rate_records` | `user_id`, `measured_at`, `bpm`, `source_record_id`, `data_origin` | `user_id, measured_at` |
+| `blood_pressure` | `blood_pressure_records` | `user_id`, `measured_at`, `systolic`, `diastolic`, (출처) | `user_id, measured_at` |
+| `oxygen` | `oxygen_records` | `user_id`, `measured_at`, `percentage`, (출처) | `user_id, measured_at` |
+| `steps` + `steps_replace` | `steps_records` | `user_id`, `start_time`, `end_time`, `count` (시간별) | 구간 교체 |
+| `sleep` | `sleep_records` | `user_id`, `start_time`, `end_time`, (출처) | `user_id, start_time, end_time` |
+| `deleted` | 위 테이블 중 출처 컬럼이 있는 4개 | `source_record_id` | — |
 
-- 리포트 화면을 열 때마다 오늘 데이터를 다시 읽어요. `upsert`로 저장해서 같은 측정값이 중복으로 쌓이지 않아요.
+- 혈압은 워치 연동을 검증할 때까지 **직접 입력한 값만** 저장해요.
 - `user_id`는 보내지 않아요. 서버가 로그인 토큰으로 사용자를 정해요. 로그인하지 않았으면 서버가 401로 거절해요.
-- 걸음 수는 폰 시간 기준 오늘 0시~내일 0시 한 행으로, 다시 열 때마다 합계를 덮어써요.
+- DB 변경: [`20261111_health_sync_source.sql`](backend/db/migrations/20261111_health_sync_source.sql)
 
 ### 네이티브 모듈 구성
 
@@ -168,7 +177,7 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
 6. 앱의 **리포트 → 실시간 리포트** 탭을 열면 데이터가 표시돼요. Logcat에서 `HEALTH_DATA` / `HEALTH_ERROR` 태그로 읽은 값과 오류를 확인할 수 있어요.
 
 ### 주의할 점·한계
-- **앱 안에서 권한을 요청하는 화면이 아직 없어요.** 위 4번처럼 Health Connect 설정에서 직접 허용해야 하고, 권한이 없으면 읽기가 실패해요(개발 빌드에서는 목업으로 대체).
+- 동기화는 앱이 켜져 있을 때만 돌아요. 앱을 안 켜도 기록이 빠지지는 않지만, 서버에 늦게 들어가요. 백그라운드 동기화는 [설계 문서](docs/background-sync-design.md)만 있어요.
 - Health Connect 설치·지원 여부(`getSdkStatus`)를 따로 확인하지 않아요. 설치되지 않은 기기에서는 읽기가 실패해요.
 - 삼성헬스 → Health Connect 동기화는 실시간이 아니에요. 워치에서 방금 측정한 값이 늦게 보일 수 있어요.
 - 갤럭시워치의 **ECG 원시 데이터와 HRV(RR 간격)는 Health Connect로 넘어오지 않아요.** 그래서 스트레스 지수는 심박수 표준편차 기반 pseudo-HRV로 계산해요.
@@ -269,6 +278,7 @@ android/app/src/main/java/com/mibandtest/
 
 ## 🔭 앞으로 해볼 것
 
+- 백그라운드 건강 데이터 동기화: 기기 전용 토큰 + WorkManager Worker ([설계](docs/background-sync-design.md))
 - PMS(월경 전 증후군)로 인한 감정 기복 케어용 챗봇 페르소나 확장, 민감 정보 보안 강화
-- 앱 안에서 Health Connect 권한 요청과 설치 여부 확인, 걸음 수·수면 데이터 DB 저장
+- Health Connect 설치·지원 여부 확인(`getSdkStatus`)
 - iOS HealthKit 연동

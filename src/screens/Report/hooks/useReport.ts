@@ -2,7 +2,6 @@ import {useEffect, useMemo, useState} from 'react';
 import {request} from '../../../services/api/client';
 import type {MetricType, ReportPeriod, StressCause, StressPeriod} from '../types';
 import {hourlyStress} from '../../../../backend/services/stressCalculator';
-import type {HealthConnectData} from '../../../services/api/health';
 
 const withPercentage = (
   causes: Omit<StressCause, 'percentage'>[],
@@ -15,7 +14,7 @@ const withPercentage = (
   }));
 };
 
-export const useReport = (samples: HealthConnectData['heartRateSamples']) => {
+export const useReport = (samples?: {time: string; bpm: number}[]) => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('heartRate');
   const [period, setPeriod] = useState<ReportPeriod>('day');
   const [stressPeriod, setStressPeriod] = useState<StressPeriod>('day');
