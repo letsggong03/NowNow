@@ -74,7 +74,7 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
 ```
 
 - 앱은 LLM이나 DB를 직접 부르지 않아요. 모든 요청은 로그인 토큰과 함께 **Node.js 백엔드**로 가요.
-- **챗봇 답변·리포트 AI 추천**: 백엔드가 건강 기록·대화 기억·취향을 모아 AI 서버(Cloudflare Worker)의 `/chat`으로 중계하고, Worker가 OpenAI를 호출해요. ([`chatRelayService.js`](backend/services/chatRelayService.js))
+- **챗봇 답변·리포트 AI 추천**: 백엔드가 건강 기록·대화 기억·취향을 모아 AI 서버(Cloudflare Worker)의 `/chat`으로 중계하고, Worker가 OpenAI(`gpt-4o-mini`)를 호출해요. ([`chatRelayService.js`](backend/services/chatRelayService.js), Worker 코드: [`chatbot-server/worker.mjs`](chatbot-server/worker.mjs))
 - **대화 기억 검색**: 백엔드가 OpenAI Embeddings API로 최근 30일 채팅 요약을 벡터로 만들어 `memory_embeddings`에 저장하고, pgvector 코사인 거리로 질문과 가까운 요약 3개를 찾아 챗봇 맥락에 넣어요. ([`chatMemorySearch.js`](backend/services/chatMemorySearch.js)) `OPENAI_API_KEY`가 없으면 이 단계는 건너뛰어요.
 - AI 서버 주소·토큰과 OpenAI 키는 백엔드 `.env`에만 두고 앱에는 넣지 않아요.
 - 음악 추천은 백엔드가 YouTube Data API v3로 검색해요.
@@ -242,7 +242,7 @@ NowNow는 **항상 차고 있는 스마트워치**로 스트레스를 꾸준히 
 | 네이티브 | Kotlin, Health Connect 1.1.0, Kotlin Coroutines |
 | DB·인증 | Supabase PostgreSQL, pgvector, Supabase Auth |
 | 백엔드 (팀) | Node.js 22, Express 5 |
-| AI (팀) | Cloudflare Workers, OpenAI API (챗봇), OpenAI Embeddings `text-embedding-3-small` + pgvector (대화 기억 검색) |
+| AI (팀) | Cloudflare Workers, OpenAI API `gpt-4o-mini` (챗봇), OpenAI Embeddings `text-embedding-3-small` + pgvector (대화 기억 검색) |
 | 외부 API | YouTube Data API v3 (음악 추천) |
 | UI | react-native-svg (차트), lucide-react-native, react-native-gesture-handler |
 
@@ -262,6 +262,18 @@ npm run ios
 
 > 건강 데이터는 **Android + Health Connect** 환경에서만 실제 값이 표시돼요. 기기 설정은 [실기기 연동 설정](#실기기-연동-설정-갤럭시워치-기준)을 참고하세요. 에뮬레이터 개발 빌드에서는 목업 데이터가 표시돼요.
 
+### AI 서버 (Cloudflare Worker)
+
+```sh
+cd chatbot-server
+node --test                              # 테스트
+npx wrangler secret put OPENAI_API_KEY   # OpenAI 키
+npx wrangler secret put DEMO_TOKEN       # 백엔드 AI_RELAY_TOKEN과 같은 값
+npx wrangler deploy
+```
+
+배포한 주소를 백엔드 `.env`의 `AI_RELAY_URL`에 넣어요. 키와 토큰은 Cloudflare 비밀값으로만 두고 코드에는 넣지 않아요.
+
 ## 📁 폴더 구조
 
 ```
@@ -274,6 +286,8 @@ src
 └─ assets/
 android/app/src/main/java/com/mibandtest/
 └─ HealthConnectModule.kt, HealthConnectPackage.kt
+backend/           # Node.js / Express 서버
+chatbot-server/    # AI 서버 (Cloudflare Worker → OpenAI)
 ```
 
 ## 🔭 앞으로 해볼 것
